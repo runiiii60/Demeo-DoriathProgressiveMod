@@ -1,0 +1,22 @@
+# ============================================================
+#  Demeo mods — .gitignore
+# ============================================================
+
+# Build artifacts (.NET / MSBuild)
+bin/
+obj/
+*.csproj.lscache
+*.user
+.vs/
+
+# Fichiers personnels / de travail, sans rapport avec le code du mod —
+# exclus du repo (voir aussi claude.txt ci-dessous : NE JAMAIS versionner
+# ce fichier, il contient une clé API en clair).
+claude.txt
+Logout.txt
+conversation.txt
+recap.txt
+Untitled*.png
+
+# Dossier de travail vide
+New folder/
