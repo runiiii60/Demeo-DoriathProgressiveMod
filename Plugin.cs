@@ -81,6 +81,10 @@ using DoriathMod.Rules;
                     // for details).
                     DoriathMod.Rules.BossSpawnBudgetAdjustedHardcoded.Patch(_harmony);
                     DoriathMod.Rules.BossSpawnPowerIndexBudgetAdjustedHardcoded.Patch(_harmony);
+                    // Hotfix v0.0.1 — see BossSpawnBudgetAdjustedRule.cs.
+                    DoriathMod.Rules.DreadElvenSummonersDisabledHardcoded.Patch(_harmony);
+                    DoriathMod.Rules.RevolutionsElementImmunityDisabledHardcoded.Patch(_harmony);
+                    DoriathMod.Rules.BardZapHitsEnemyPropsHardcoded.Patch(_harmony);
                     Log.LogInfo("[Plugin] Hardcoded rules applied.");
                 }
                 else

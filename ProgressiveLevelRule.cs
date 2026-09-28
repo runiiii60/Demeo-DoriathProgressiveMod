@@ -615,8 +615,20 @@ using UnityEngine;
             Inventory.Item value;
             int nextLevel = piece.GetStatMax(Stats.Type.CritChance);
 
+            // Stands a downed hero back up BEFORE the heal. Piece.SetIsDowned is the
+            // native method that actually changes the downed state (animation, sound,
+            // network, stats). sourceAbility=default (PlayerMelee, not Revive) on
+            // purpose: avoids the level-loss penalty of PieceProgressLostRule, which
+            // only triggers on AbilityKey.Revive.
+            if (piece.IsDowned())
+            {
+                piece.SetIsDowned(false, gameContext.pieceAndTurnController, null, default);
+                Plugin.Log?.LogInfo($"[DoriathLevelUpRule] pieceId={pieceId} stood back up (was knocked down) on level-up.");
+            }
+
             // Heal on level-up
             piece.effectSink.Heal(piece.GetMaxHealth());
+            Plugin.Log?.LogInfo($"[DoriathLevelUpRule] pieceId={pieceId} fully healed on level-up (Health -> {piece.GetMaxHealth()}).");
             piece.DisableEffectState(EffectStateType.Heal);
             piece.EnableEffectState(EffectStateType.Heal, 1);
 

@@ -19,7 +19,7 @@ namespace DoriathMod.Rules
     /// <remarks>
     /// <para>
     /// Starting tier (party level 0) matches the native rules' values: Attack x1.1,
-    /// Health x1.2 (so the very start of the game is unchanged), scaling up to a cap
+    /// Health x1.1 (so the very start of the game is unchanged), scaling up to a cap
     /// at average level 9 (full party) of Attack x1.4 / Health x1.9. The curve is
     /// LINEAR (exponent 1): each average level adds the same amount of scaling from
     /// start to end.
@@ -35,22 +35,22 @@ namespace DoriathMod.Rules
         // Scaling values by the party's average displayed level (linear formula
         // below, BaseXMultiplier -> MaxXMultiplier):
         //   Average level | Attack x | Health x
-        //        0        |   1.10   |   1.20
-        //        1        |   1.13   |   1.28
-        //        2        |   1.17   |   1.36
-        //        3        |   1.20   |   1.43
-        //        4        |   1.23   |   1.51
-        //        5        |   1.27   |   1.59
-        //        6        |   1.30   |   1.67
-        //        7        |   1.33   |   1.74
-        //        8        |   1.37   |   1.82
+        //        0        |   1.10   |   1.10
+        //        1        |   1.13   |   1.19
+        //        2        |   1.17   |   1.28
+        //        3        |   1.20   |   1.37
+        //        4        |   1.23   |   1.46
+        //        5        |   1.27   |   1.54
+        //        6        |   1.30   |   1.63
+        //        7        |   1.33   |   1.72
+        //        8        |   1.37   |   1.81
         //        9        |   1.40   |   1.90
         public override string Description =>
             "Enemy attack/health scale dynamically with the party's average level";
 
-        // ── Tiers, mirrored from EnemyAttackScaled(1.1) / EnemyHealthScaled(1.2) ──
+        // ── Tiers, mirrored from EnemyAttackScaled(1.1) / EnemyHealthScaled(1.1) ──
         private const float BaseAttackMultiplier = 1.1f;
-        private const float BaseHealthMultiplier = 1.2f;
+        private const float BaseHealthMultiplier = 1.1f;
         private const float MaxAttackMultiplier  = 1.4f;
         private const float MaxHealthMultiplier  = 1.9f;
         private const float MaxAverageLevel      = 9f;   // max displayed level (0-9)
