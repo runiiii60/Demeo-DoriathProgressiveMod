@@ -110,7 +110,7 @@ namespace DoriathMod.Rules
     }
 
     /// <summary>
-    /// Hotfix v0.0.1 — removes the extra ElvenSummoners spawned by the native Dread mode.
+    /// Hotfix v1.0.1 — removes the extra ElvenSummoners spawned by the native Dread mode.
     /// AIDirectorController2.PrepareLoadNewLevel() calls SpawnSpecialEnemies(), which spawns
     /// DreadLevel.FloorOne/Two/ThreeElvenSummoners ElvenSummoners near the exit, outside of
     /// any monster deck. That method does nothing else, so it is skipped: only the
@@ -135,7 +135,7 @@ namespace DoriathMod.Rules
     }
 
     /// <summary>
-    /// Hotfix v0.0.1 — removes the hero elemental immunities of HouseRules' "Revolutions" mode.
+    /// Hotfix v1.0.1 — removes the hero elemental immunities of HouseRules' "Revolutions" mode.
     /// PartyDamageOverriddenRule.OnActivate turns its static "revolutions" flag on as soon as a
     /// rule of the ruleset has "Revolutions" in its name (here FreeRevolutionsAbilityOnCrit).
     /// In that mode, damage from any non-Boss attacker is cancelled depending on the hero:
@@ -158,7 +158,7 @@ namespace DoriathMod.Rules
     }
 
     /// <summary>
-    /// Hotfix v0.0.1 — the Bard's Zap dealt no damage to HealingBeacon / SmiteWard / SporeFungus.
+    /// Hotfix v1.0.1 — the Bard's Zap dealt no damage to HealingBeacon / SmiteWard / SporeFungus.
     /// PartyDamageOverriddenRule.Damage_DealDamage_Prefix (Config true = "electric only" mode)
     /// cancels player Zap/LightningBolt/Overload damage on every Prop (except Lamp/SandPile/
     /// Corruption/EnemyTurret/RootVine) to protect allied props — which also caught these

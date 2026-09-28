@@ -25,7 +25,7 @@ Prerequisites: [BepInEx](https://github.com/BepInEx/BepInEx) and [HouseRules](ht
 
 ---
 
-## Hotfix v0.0.1
+## Hotfix v1.0.1
 
 ### Fixes
 - **Only one ElvenSummoner on floor 1.** The second one came from the game's native Dread mode, which spawns extra ElvenSummoners near the exit outside of any monster deck. Those bonus spawns are now disabled; only the KeyHolder remains.
