@@ -1,5 +1,6 @@
 namespace DoriathMod.Rules
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -188,6 +189,88 @@ namespace DoriathMod.Rules
             if (target.piece == null || !EnemyProps.Contains(target.piece.boardPieceId)) return true;
             __result = true;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Hotfix v1.0.2 — the game froze when a lamp exploded inside gas (e.g. the Barbarian's
+    /// ScrollTsunami pushing an oil lamp into gas). The game's telemetry
+    /// (MotherTracker.TrackDamageDealt) reads the attacker's team; a lamp is a prop with
+    /// Team.None, and TeamData.GetOtherTeam(Team.None) throws an ArgumentException. Inside the
+    /// gas-ignition coroutine (IgniteGasCoroutine) that exception kills the coroutine, so the
+    /// sequence never ends and the game hangs. A Harmony finalizer swallows the exception: it
+    /// is pure telemetry (metrics submission), with no gameplay effect.
+    /// </summary>
+    public static class TelemetryDamageCrashGuardHardcoded
+    {
+        public static void Patch(Harmony harmony)
+        {
+            var method = AccessTools.Method(AccessTools.TypeByName("MotherTracker"), "TrackDamageDealt");
+            if (method == null)
+            {
+                Plugin.Log?.LogWarning("[TelemetryDamageCrashGuardHardcoded] MotherTracker.TrackDamageDealt not found — patch skipped.");
+                return;
+            }
+
+            harmony.Patch(method, finalizer: new HarmonyMethod(typeof(TelemetryDamageCrashGuardHardcoded), nameof(Finalizer)));
+            Plugin.Log?.LogInfo("[TelemetryDamageCrashGuardHardcoded] Damage telemetry exceptions neutralized (freeze when a lamp explodes in gas).");
+        }
+
+        private static Exception Finalizer(Exception __exception)
+        {
+            if (__exception != null)
+                Plugin.Log?.LogWarning($"[TelemetryDamageCrashGuardHardcoded] Exception swallowed in MotherTracker.TrackDamageDealt: {__exception.GetType().Name} — {__exception.Message}");
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Hotfix v1.0.2 — 15% fewer enemies on floor 2 only. No AIDirectorConfig field is per
+    /// floor (they are all global), so the spawn budget calculation itself is patched.
+    /// AIDirectorDataHelper exposes two "deltas" (available budget = target level minus the
+    /// enemy power already on the board): GetAmbientPowerIndexDelta (normal spawns while
+    /// exploring) and GetDifficultPowerIndexDelta (difficulty spikes). Both return an int. The
+    /// result is multiplied only when it is POSITIVE (a negative delta means "too many enemies
+    /// already present": shrinking it would allow even more). Floors 1 and 3 and the boss
+    /// fight budget (BossSpawnPowerIndexBudgetAdjustedHardcoded, a different path) are untouched.
+    /// </summary>
+    public static class Floor2SpawnBudgetReducedHardcoded
+    {
+        private const float Multiplier = 0.85f;   // -15 %
+        private const int TargetFloorIndex = 2;
+
+        public static void Patch(Harmony harmony)
+        {
+            var type = AccessTools.TypeByName("Boardgame.AIDirector.AIDirectorDataHelper");
+            var postfix = new HarmonyMethod(typeof(Floor2SpawnBudgetReducedHardcoded), nameof(Postfix));
+            var patched = 0;
+
+            foreach (var name in new[] { "GetAmbientPowerIndexDelta", "GetDifficultPowerIndexDelta" })
+            {
+                var method = AccessTools.Method(type, name);
+                if (method == null)
+                {
+                    Plugin.Log?.LogWarning($"[Floor2SpawnBudgetReducedHardcoded] {name} not found — not patched.");
+                    continue;
+                }
+
+                harmony.Patch(method, postfix: postfix);
+                patched++;
+            }
+
+            if (patched > 0)
+                Plugin.Log?.LogInfo($"[Floor2SpawnBudgetReducedHardcoded] Floor {TargetFloorIndex} spawn budget multiplied by {Multiplier} ({patched} method(s) patched) — other floors unchanged.");
+        }
+
+        private static void Postfix(object __instance, ref int __result)
+        {
+            if (__result <= 0) return;
+
+            var floor = Traverse.Create(__instance).Method("GetCurrentPlayableFloorIndex").GetValue<int>();
+            if (floor != TargetFloorIndex) return;
+
+            __result = (int)(__result * Multiplier);
         }
     }
 }

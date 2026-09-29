@@ -85,6 +85,9 @@ using DoriathMod.Rules;
                     DoriathMod.Rules.DreadElvenSummonersDisabledHardcoded.Patch(_harmony);
                     DoriathMod.Rules.RevolutionsElementImmunityDisabledHardcoded.Patch(_harmony);
                     DoriathMod.Rules.BardZapHitsEnemyPropsHardcoded.Patch(_harmony);
+                    // Hotfix v1.0.2 — see BossSpawnBudgetAdjustedRule.cs.
+                    DoriathMod.Rules.TelemetryDamageCrashGuardHardcoded.Patch(_harmony);
+                    DoriathMod.Rules.Floor2SpawnBudgetReducedHardcoded.Patch(_harmony);
                     Log.LogInfo("[Plugin] Hardcoded rules applied.");
                 }
                 else
@@ -158,6 +161,6 @@ using DoriathMod.Rules;
     {
         public const string GUID    = "com.monnom.demeomods.progressive";
         public const string NAME    = "DoriathMod";
-        public const string VERSION = "1.0.1";
+        public const string VERSION = "1.0.2";
     }
 }

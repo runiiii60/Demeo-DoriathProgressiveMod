@@ -69,7 +69,7 @@ namespace DoriathMod.Rules
     {
         // Fixed value (see class doc comment above). Native game value
         // (without the mod): 1.0.
-        private const float Multiplier = 3.84f;
+        private const float Multiplier = 3f;
 
         public static void Patch(Harmony harmony)
         {
