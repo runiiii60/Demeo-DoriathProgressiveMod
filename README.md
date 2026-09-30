@@ -28,16 +28,46 @@ Prerequisites: [BepInEx](https://github.com/BepInEx/BepInEx) and [HouseRules](ht
 ## Hotfix v1.0.1
 
 ### Fixes
-- **Only one ElvenSummoner on floor 1.** The second one came from the game's native Dread mode, which spawns extra ElvenSummoners near the exit outside of any monster deck. Those bonus spawns are now disabled; only the KeyHolder remains.
-- **Heroes no longer ignore damage of "their" element.** HouseRules' Revolutions mode was switched on by mistake (a rule of the ruleset has "Revolutions" in its name). It cancelled damage from non-boss enemies based on the hero: Sorcerer vs Electricity (ElvenSummoner, TheUnspoken...), Guardian vs Fire, Hunter vs Ice, Barbarian vs Acid/Petrify, Warlock vs untagged damage. It also gave the Warlock +1 AP when hit by such attacks — removed as well.
-- **The Bard's Zap now damages HealingBeacon, SmiteWard and SporeFungus.** HouseRules' PartyDamageOverridden cancelled player Zap/LightningBolt/Overload damage on every prop to protect allied props, which also caught these enemy props.
-- **Level-up now stands a knocked-down hero back up** (in addition to the full heal), without triggering the level-loss penalty of a Revive.
+- **Only one ElvenSummoner on floor 1**: the bonus ones came from the game's native Dread mode and are now disabled (only the KeyHolder remains).
+- **Heroes no longer ignore damage of "their" element**: the Revolutions mode elemental immunities are removed (this also removes the Warlock's +1 AP when hit).
+- **The Bard's Zap now damages `HealingBeacon`, `SmiteWard` and `SporeFungus`.**
+- **Level-up now stands a knocked-down hero back up.**
 
 ### Balance changes (`Doriath (PROGRESSIVE).json` and code)
-- ElvenSummoner: 2 AP, move range 4, `Banish` and `EmergencyTeleport` removed from its abilities.
-- MotherCy removed from the floor 2 decks: she only appears as the floor 2 KeyHolder.
-- Sorcerer: no longer immune to `StunSelf`.
-- Damage: Zap and EnemyFireball 4–6, Fireball 10–15.
-- Mimic attack 4, ScabRat attack 4.
-- `CardEnergyFromAttackMultiplied`: 0.3.
-- Dynamic enemy health scaling (`EnemyPartyScaled`): now x1.1 at average party level 0 up to x1.9 at level 9 (attack unchanged, x1.1 to x1.4).
+- **ElvenSummoner**: 2 AP, move range 4, `Banish` and `EmergencyTeleport` removed.
+- **MotherCy** removed from the floor 2 decks (only appears as the floor 2 KeyHolder).
+- **Sorcerer**: no longer immune to `StunSelf`.
+- **Damage**: Zap and EnemyFireball 4–6, Fireball 10–15.
+- **Mimic** and **ScabRat** attack 4.
+- **`CardEnergyFromAttackMultiplied`**: 0.3.
+- **`EnemyPartyScaled`**: enemy health x1.1 at average party level 0 up to x1.9 at level 9.
+- Plugin version bumped to 1.0.1.
+
+---
+
+## Hotfix v1.0.2
+
+### Fixes
+- **No more game freeze when a lamp explodes in gas**: it only concerns telemetry (metrics submission), with no effect on gameplay.
+- **`ElvenFloor09` removed from the random level pool.**
+
+### Balance changes (`Doriath (PROGRESSIVE).json` and code)
+- **Floor 2: 15% fewer enemies.** The boss floor and the boss fight itself are unchanged.
+- **Boss floor budget**: adjusted.
+- **Smaller `BossDeck`**: cut by half.
+- **`AIDirectorConfig`**: `AllowedSpawnZoneSaturation` 1.0 → 0.85, `MaxNumberOfUnitsOnBoardHardCap` 168 → 150, `ActivePowerIndexInLevelSoftRoof` 630 → 500.
+- **Verochka removed** from `MonsterDeckOverridden`.
+- **Level pool**: `DesertFloor09` replaced by `DesertFloor05`.
+- Plugin version bumped to 1.0.2.
+
+---
+
+## Hotfix v1.0.3
+
+### Fixes
+- **A failing hardcoded patch no longer disables the others.** 
+
+### Balance changes
+- None. This release contains no gameplay or `Doriath (PROGRESSIVE).json` change.
+
+- Plugin version bumped to 1.0.3.

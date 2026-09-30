@@ -2,6 +2,10 @@
 #  Demeo mods — .gitignore
 # ============================================================
 
+# Archives de release — elles vivent dans les Releases GitHub, pas dans le repo
+*.rar
+*.zip
+
 # Build artifacts (.NET / MSBuild)
 bin/
 obj/

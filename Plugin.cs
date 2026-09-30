@@ -59,42 +59,60 @@ using DoriathMod.Rules;
             // Fixed patches with no reason to be tweaked via JSON — taken out
             // of the Rule system to stop cluttering the panel of active
             // rules. Always active, no JSON toggle.
-            try
+            // Each patch is isolated in its own try: a patch that fails (a game
+            // method renamed by an update, for instance) must not prevent the
+            // others from being applied.
+            if (_harmony == null)
             {
-                if (_harmony != null)
+                Log.LogWarning("[Plugin] _harmony is null — hardcoded rules skipped.");
+            }
+            else
+            {
+                var hardcoded = new Action<Harmony>[]
                 {
-                    DoriathMod.Rules.AbilityMayNotTargetSelfHardcoded.Patch(_harmony);
-                    DoriathMod.Rules.AbilityNoAllyDamageHardcoded.Patch(_harmony);
-                    DoriathMod.Rules.BerserkEndsTurnHardcoded.Patch(_harmony);
+                    AbilityMayNotTargetSelfHardcoded.Patch,
+                    AbilityNoAllyDamageHardcoded.Patch,
+                    BerserkEndsTurnHardcoded.Patch,
                     // Gives Berserk pieces back +1 ActionPoint/turn (via the native
                     // EffectStateType.ExtraAction mechanism), in a capped way — completes
                     // BerserkEndsTurnHardcoded without reintroducing the infinite-turn bug.
-                    DoriathMod.Rules.BerserkExtraActionHardcoded.Patch(_harmony);
+                    BerserkExtraActionHardcoded.Patch,
                     // Prevents MotherCy, ElvenSummoner and RootLord from automatically
                     // ending their turn after an ability while they still have AP left
                     // (native game behavior: TryEndTurnAfterAttack was called without
                     // ever checking remaining AP).
-                    DoriathMod.Rules.BossExtraActionsHardcoded.Patch(_harmony);
+                    BossExtraActionsHardcoded.Patch,
                     // Spawn budget around the boss and total power index budget —
                     // taken out of the Rule/JSON system to free up space in Panel 1,
                     // values fixed to the last active settings (see the two files
                     // for details).
-                    DoriathMod.Rules.BossSpawnBudgetAdjustedHardcoded.Patch(_harmony);
-                    DoriathMod.Rules.BossSpawnPowerIndexBudgetAdjustedHardcoded.Patch(_harmony);
+                    BossSpawnBudgetAdjustedHardcoded.Patch,
+                    BossSpawnPowerIndexBudgetAdjustedHardcoded.Patch,
                     // Hotfix v1.0.1 — see BossSpawnBudgetAdjustedRule.cs.
-                    DoriathMod.Rules.DreadElvenSummonersDisabledHardcoded.Patch(_harmony);
-                    DoriathMod.Rules.RevolutionsElementImmunityDisabledHardcoded.Patch(_harmony);
-                    DoriathMod.Rules.BardZapHitsEnemyPropsHardcoded.Patch(_harmony);
-                    Log.LogInfo("[Plugin] Hardcoded rules applied.");
-                }
-                else
+                    DreadElvenSummonersDisabledHardcoded.Patch,
+                    RevolutionsElementImmunityDisabledHardcoded.Patch,
+                    BardZapHitsEnemyPropsHardcoded.Patch,
+                    // Hotfix v1.0.2 — see BossSpawnBudgetAdjustedRule.cs.
+                    TelemetryDamageCrashGuardHardcoded.Patch,
+                    Floor2SpawnBudgetReducedHardcoded.Patch,
+                };
+
+                var applied = 0;
+                foreach (var patch in hardcoded)
                 {
-                    Log.LogWarning("[Plugin] _harmony is null — hardcoded rules skipped.");
+                    var name = patch.Method.DeclaringType?.Name ?? "?";
+                    try
+                    {
+                        patch(_harmony);
+                        applied++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.LogError($"[Plugin] Hardcoded patch {name} failed: {ex.Message}");
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.LogError($"[Plugin] Error in hardcoded rules: {ex.Message}");
+
+                Log.LogInfo($"[Plugin] Hardcoded rules applied ({applied}/{hardcoded.Length}).");
             }
 
             // Removal of GrayAlien stats (loaded after us)
@@ -158,6 +176,6 @@ using DoriathMod.Rules;
     {
         public const string GUID    = "com.monnom.demeomods.progressive";
         public const string NAME    = "DoriathMod";
-        public const string VERSION = "1.0.1";
+        public const string VERSION = "1.0.3";
     }
 }

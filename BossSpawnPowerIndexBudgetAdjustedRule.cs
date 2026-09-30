@@ -1,3 +1,61 @@
+// ============================================================
+//  Doriath (PROGRESSIVE) — BossSpawnPowerIndexBudgetAdjustedRule.cs
+// ============================================================
+//
+// Complements BossSpawnBudgetAdjustedRule.cs (which makes moddable the
+// power-index COST of individual monsters eligible for the boss's ambient
+// spawn — minPowerIndexCost/maxPowerIndexCost). This rule modifies
+// something different: the TOTAL power-index BUDGET (PowerIndexPoints)
+// that the director is allowed to spend on this ambient spawn around the
+// boss.
+//
+// Found via targeted decompilation: in
+// Boardgame.AIDirector.AIDirectorController2.SpawnBossAndMinions(), just
+// before the call to CustomSpawn(...), the game computes: PowerIndexPoints
+// = dataHelper.GetDifficultPowerIndexLevel(currentLevelIndex, ...)
+//
+// AIDirectorDataHelper.GetDifficultPowerIndexLevel(...) (returns an int)
+// is NOT specific to the boss fight: it is also called by
+// GetDifficultPowerIndexDelta() ("normal" ambient spawn budget during
+// exploration), HandleSpikeLock() (triggering difficulty spikes) and
+// SpawnKeyholder() (spawning key guardians). Patching this method directly
+// (a plain Postfix) would therefore have unwanted, untested side effects
+// on those three other systems.
+//
+// To stay STRICTLY isolated to the boss fight, this patch also uses a
+// Transpiler on SpawnBossAndMinions (like
+// BossSpawnBudgetAdjustedHardcoded), but positioned differently: instead
+// of replacing literals, it locates the precise call to
+// GetDifficultPowerIndexLevel() that immediately precedes the call to
+// CustomSpawn(...) in THIS method, and inserts right after it a multiplier
+// (conv.r4 ; ldc.r4 <multiplier> ; mul ; call Mathf.RoundToInt) — the same
+// idiom the game already uses natively in HandleSpikeLock() for a similar
+// calculation. The resulting int then continues normally as CustomSpawn's
+// PowerIndexPoints argument, without touching
+// GetDifficultPowerIndexLevel() itself — so there is no effect on
+// HandleSpikeLock/SpawnKeyholder/normal ambient spawn.
+//
+// The CustomSpawn call is located by name (like the other patch), but the
+// position is validated by checking that the instruction at callIndex-7 is
+// indeed a callvirt to GetDifficultPowerIndexLevel (verified by METHOD
+// NAME, not literal value) — so it is insensitive to whatever
+// BossSpawnBudgetAdjustedHardcoded does to the min/max literals
+// (callIndex-5/-4), whether or not it has already run on this same method.
+//
+// WARNING - fragility specific to transpilers, to be tested in-game before
+// treating this as reliable: if a game update changes this call (argument
+// order, code inserted between the two), the patch WILL DO NOTHING
+// (warning log + native value kept) rather than risk corrupting the
+// method.
+//
+// Native multiplier (= unchanged behavior): 1.0.
+//
+// HARDCODED: taken out of the Rule/JSON system — multiplier fixed at 3.84x
+// (more intense than native behavior), no longer appearing or configurable
+// in Panel 1 (same pattern as AbilityMayNotTargetSelfHardcoded /
+// AbilityNoAllyDamageHardcoded / BerserkEndsTurnHardcoded /
+// BossSpawnBudgetAdjustedHardcoded — see Plugin.Awake()).
+
 namespace DoriathMod.Rules
 {
     using System.Collections.Generic;
@@ -7,69 +65,11 @@ namespace DoriathMod.Rules
     using HarmonyLib;
     using UnityEngine;
 
-    /// <summary>
-    /// Complements BossSpawnBudgetAdjustedRule.cs (which makes moddable the power-index
-    /// COST of individual monsters eligible for the boss's ambient spawn —
-    /// minPowerIndexCost/maxPowerIndexCost). This rule modifies something different: the
-    /// TOTAL power-index BUDGET (PowerIndexPoints) that the director is allowed to spend
-    /// on this ambient spawn around the boss.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Found via targeted decompilation: in
-    /// Boardgame.AIDirector.AIDirectorController2.SpawnBossAndMinions(), just before the
-    /// call to CustomSpawn(...), the game computes:
-    /// <c>PowerIndexPoints = dataHelper.GetDifficultPowerIndexLevel(currentLevelIndex, ...)</c>
-    /// </para>
-    /// <para>
-    /// AIDirectorDataHelper.GetDifficultPowerIndexLevel(...) (returns an int) is NOT
-    /// specific to the boss fight: it is also called by GetDifficultPowerIndexDelta()
-    /// ("normal" ambient spawn budget during exploration), HandleSpikeLock() (triggering
-    /// difficulty spikes) and SpawnKeyholder() (spawning key guardians). Patching this
-    /// method directly (a plain Postfix) would therefore have unwanted, untested side
-    /// effects on those three other systems.
-    /// </para>
-    /// <para>
-    /// To stay STRICTLY isolated to the boss fight, this patch also uses a Transpiler on
-    /// SpawnBossAndMinions (like BossSpawnBudgetAdjustedHardcoded), but positioned
-    /// differently: instead of replacing literals, it locates the precise call to
-    /// GetDifficultPowerIndexLevel() that immediately precedes the call to
-    /// CustomSpawn(...) in THIS method, and inserts right after it a multiplier
-    /// (conv.r4 ; ldc.r4 &lt;multiplier&gt; ; mul ; call Mathf.RoundToInt) — the same
-    /// idiom the game already uses natively in HandleSpikeLock() for a similar
-    /// calculation. The resulting int then continues normally as CustomSpawn's
-    /// PowerIndexPoints argument, without touching GetDifficultPowerIndexLevel() itself —
-    /// so there is no effect on HandleSpikeLock/SpawnKeyholder/normal ambient spawn.
-    /// </para>
-    /// <para>
-    /// The CustomSpawn call is located by name (like the other patch), but the position
-    /// is validated by checking that the instruction at callIndex-7 is indeed a
-    /// <c>callvirt</c> to GetDifficultPowerIndexLevel (verified by METHOD NAME, not
-    /// literal value) — so it is insensitive to whatever BossSpawnBudgetAdjustedHardcoded
-    /// does to the min/max literals (callIndex-5/-4), whether or not it has already run
-    /// on this same method.
-    /// </para>
-    /// <para>
-    /// WARNING - fragility specific to transpilers, to be tested in-game before treating
-    /// this as reliable: if a game update changes this call (argument order, code
-    /// inserted between the two), the patch WILL DO NOTHING (warning log + native value
-    /// kept) rather than risk corrupting the method.
-    /// </para>
-    /// <para>
-    /// Native multiplier (= unchanged behavior): 1.0.
-    /// </para>
-    /// <para>
-    /// HARDCODED: taken out of the Rule/JSON system — multiplier fixed at 3.84x (more
-    /// intense than native behavior), no longer appearing or configurable in Panel 1
-    /// (same pattern as AbilityMayNotTargetSelfHardcoded / AbilityNoAllyDamageHardcoded /
-    /// BerserkEndsTurnHardcoded / BossSpawnBudgetAdjustedHardcoded — see Plugin.Awake()).
-    /// </para>
-    /// </remarks>
     public static class BossSpawnPowerIndexBudgetAdjustedHardcoded
     {
         // Fixed value (see class doc comment above). Native game value
         // (without the mod): 1.0.
-        private const float Multiplier = 3.84f;
+        private const float Multiplier = 3f;
 
         public static void Patch(Harmony harmony)
         {

@@ -15,15 +15,12 @@ using UnityEngine;
 
     public sealed class DoriathLevelUpRule : Rule, IConfigWritable<bool>, IPatchable, IMultiplayerSafe
     {
-        /// <summary>
-        /// Short one-line description shown in the native Panel 1 ("Active Rules").
-        /// </summary>
-        /// <remarks>
-        /// Panel 1 must list ONLY the rule name — the perk/level details live
-        /// exclusively on Panel 2 (<c>DoriathPerksPanel</c>). The description is
-        /// intentionally short, matching the one-liner style used by the ~38 other
-        /// rules in the ruleset.
-        /// </remarks>
+        // Short one-line description shown in the native Panel 1 ("Active Rules").
+        //
+        // Panel 1 must list ONLY the rule name — the perk/level details live
+        // exclusively on Panel 2 (DoriathPerksPanel). The description is
+        // intentionally short, matching the one-liner style used by the ~38 other
+        // rules in the ruleset.
         public override string Description => "Heroes level up by filling the mana bar.";
 
         private static Context? _context;
@@ -36,45 +33,33 @@ using UnityEngine;
         private static MethodInfo? _followPlayerMeleePlanMethod;
         private static MethodInfo? _pieceIsBotMethod;
 
-        /// <summary>
-        /// Instances of FollowPlayerMeleeBehaviour created by our Postfix below (one per
-        /// spawned target piece).
-        /// </summary>
-        /// <remarks>
-        /// Used to restrict the IsBot() patch to ONLY the evaluation of these specific
-        /// instances (see <see cref="PatchFollowPlayerMeleeBehaviourGate"/>).
-        /// </remarks>
+        // Instances of FollowPlayerMeleeBehaviour created by our Postfix below
+        // (one per spawned target piece).
+        //
+        // Used to restrict the IsBot() patch to ONLY the evaluation of these
+        // specific instances (see PatchFollowPlayerMeleeBehaviourGate).
         private static readonly HashSet<object> _ourFallbackInstances = new();
         private static bool _forceIsBotForFallback;
 
-        /// <summary>
-        /// BoardPieceIds of the pieces affected by the "wasted actions" fix below.
-        /// </summary>
-        /// <remarks>
-        /// ActionPoint is raised via PieceConfigAdjusted, but the native AI is limited
-        /// to ~2 useful actions per turn (see <see cref="PatchBossFallbackBehaviour"/>).
-        /// The FollowPlayerMeleeBehaviour fallback is active for these 3 bosses.
-        /// </remarks>
+        // BoardPieceIds of the pieces affected by the "wasted actions" fix below.
+        //
+        // ActionPoint is raised via PieceConfigAdjusted, but the native AI is
+        // limited to ~2 useful actions per turn (see PatchBossFallbackBehaviour).
+        // The FollowPlayerMeleeBehaviour fallback is active for these 3 bosses.
         private static readonly BoardPieceId[] BossesNeedingFallbackBehaviour =
         {
             BoardPieceId.MotherCy, BoardPieceId.ElvenSummoner, BoardPieceId.RootLord
         };
 
-        /// <summary>
-        /// Replacement text for Panel 1 only.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// "Doriath (PROGRESSIVE)" is shown in dark purple (distinct from the orange
-        /// used by the button/RoomFinder, which reads the JSON "Name" field directly —
-        /// see Doriath (PROGRESSIVE).json). "by ruNIIII" is dark gray and bold, to
-        /// visually match the "Playing ... ruleset!" style (black).
-        /// </para>
-        /// <para>
-        /// The button/RoomFinder, which reads the JSON "Name" field directly, is not
-        /// affected by this replacement text.
-        /// </para>
-        /// </remarks>
+        // Replacement text for Panel 1 only.
+        //
+        // "Doriath (PROGRESSIVE)" is shown in dark purple (distinct from the
+        // orange used by the button/RoomFinder, which reads the JSON "Name" field
+        // directly — see Doriath (PROGRESSIVE).json). "by ruNIIII" is dark gray
+        // and bold, to visually match the "Playing ... ruleset!" style (black).
+        //
+        // The button/RoomFinder, which reads the JSON "Name" field directly, is
+        // not affected by this replacement text.
         private const string Panel1CleanIntroText =
             "<color=#000000>Playing</color> <color=#9400D3>Doriath (PROGRESSIVE)</color> <color=#000000>ruleset!</color>\n<color=#333333><b>by ruNIIII</b></color>";
 
@@ -106,23 +91,17 @@ using UnityEngine;
             UnpatchFollowPlayerMeleeBehaviourGate();
         }
 
-        /// <summary>
-        /// Panel 1 ("Active Rules"): cleans up the "Playing X ruleset!" line.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// The Ruleset.Name field is multi-line/colored (RoomFinder and Panel 1 both
-        /// reuse it as-is), which makes "ruleset!" appear stuck right after
-        /// "by ruNIIII" on the same colored line in the native panel.
-        /// </para>
-        /// <para>
-        /// We patch HouseRulesUiGameVr.Initialize() with a Postfix to find, after the
-        /// fact, the text component containing this phrase and rewrite it cleanly on
-        /// 2 lines. The search uses generic reflection (a public "text" property of
-        /// type string) so it depends on neither UnityEngine.UI.Text nor
-        /// TMPro.TMP_Text (neither DLL is referenced in this project).
-        /// </para>
-        /// </remarks>
+        // Panel 1 ("Active Rules"): cleans up the "Playing X ruleset!" line.
+        //
+        // The Ruleset.Name field is multi-line/colored (RoomFinder and Panel 1
+        // both reuse it as-is), which makes "ruleset!" appear stuck right after
+        // "by ruNIIII" on the same colored line in the native panel.
+        //
+        // We patch HouseRulesUiGameVr.Initialize() with a Postfix to find, after
+        // the fact, the text component containing this phrase and rewrite it
+        // cleanly on 2 lines. The search uses generic reflection (a public "text"
+        // property of type string) so it depends on neither UnityEngine.UI.Text
+        // nor TMPro.TMP_Text (neither DLL is referenced in this project).
         private static void PatchPanel1IntroCredit()
         {
             try
@@ -156,45 +135,39 @@ using UnityEngine;
             catch { }
         }
 
-        /// <summary>
-        /// Fix: bosses stuck at ~2 actions/turn despite ActionPoint=4.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// Root cause (from IL analysis of Assembly-CSharp.dll — see PieceAI.CreatePlan
-        /// / Behaviour.Prepare): Behaviour.Prepare() resets CurrentScore to -1 before
-        /// each evaluation, and PieceAI.CreatePlan() IGNORES any Behaviour whose score
-        /// stays &lt;= -1. If ALL of the boss's Behaviours (melee attack, special
-        /// spells like Rain/Electricity...) are unavailable this turn (out of range,
-        /// internal cooldown, failed random roll), CreatePlan() returns null →
-        /// PopulateEnemyAIEvents sends EndTurn IMMEDIATELY, even if ActionPoints
-        /// remain (the "ActionPoints &gt; 1" check is NEVER reached in that case).
-        /// Since MotherCy/ElvenSummoner/BossTown natively only have 2-3 "special"
-        /// actions (designed for their native ActionPoint, lower than 4), they
-        /// quickly exhaust their repertoire and end their turn early, independent of
-        /// this mod's ActionPoint=4.0 buff from PieceConfigAdjusted.
-        /// </para>
-        /// <para>
-        /// Fix: on spawn (Postfix on PieceSpawner.CreatePieceInternal), we add the
-        /// generic native Behaviour FollowPlayerMeleeBehaviour (key
-        /// DataKeys.Behaviour.FollowPlayerMeleeAttacker) to these pieces — the same
-        /// Behaviour ordinary melee enemies use to close in on/attack a player. It
-        /// participates in the SAME scoring as the piece's special Behaviours
-        /// (PieceAI.CreatePlan keeps the best score, whether native or added here),
-        /// so it only takes over when no special action is usable — a safety net
-        /// that consumes the remaining ActionPoint instead of wasting it, without
-        /// changing behaviour the rest of the time.
-        /// </para>
-        /// <para>
-        /// IMPORTANT: unlike the 2 previous fixes (RegainAbilityIfMaxxedOut,
-        /// replenishCooldownAfterEffectsEnd), which were validated by direct,
-        /// unambiguous IL proof, the exact construction/scoring of
-        /// FollowPlayerMeleeBehaviour remains a reasonable hypothesis, to be
-        /// confirmed in-game. Confirmed by log for ElvenSummoner (it does use its
-        /// ActionPoint=4 on nearly all of its turns after this fix, except the very
-        /// first turn before any player has been detected).
-        /// </para>
-        /// </remarks>
+        // Fix: bosses stuck at ~2 actions/turn despite ActionPoint=4.
+        //
+        // Root cause (from IL analysis of Assembly-CSharp.dll — see
+        // PieceAI.CreatePlan / Behaviour.Prepare): Behaviour.Prepare() resets
+        // CurrentScore to -1 before each evaluation, and PieceAI.CreatePlan()
+        // IGNORES any Behaviour whose score stays <= -1. If ALL of the boss's
+        // Behaviours (melee attack, special spells like Rain/Electricity...) are
+        // unavailable this turn (out of range, internal cooldown, failed random
+        // roll), CreatePlan() returns null → PopulateEnemyAIEvents sends EndTurn
+        // IMMEDIATELY, even if ActionPoints remain (the "ActionPoints > 1" check
+        // is NEVER reached in that case). Since MotherCy/ElvenSummoner/BossTown
+        // natively only have 2-3 "special" actions (designed for their native
+        // ActionPoint, lower than 4), they quickly exhaust their repertoire and
+        // end their turn early, independent of this mod's ActionPoint=4.0 buff
+        // from PieceConfigAdjusted.
+        //
+        // Fix: on spawn (Postfix on PieceSpawner.CreatePieceInternal), we add the
+        // generic native Behaviour FollowPlayerMeleeBehaviour (key
+        // DataKeys.Behaviour.FollowPlayerMeleeAttacker) to these pieces — the same
+        // Behaviour ordinary melee enemies use to close in on/attack a player. It
+        // participates in the SAME scoring as the piece's special Behaviours
+        // (PieceAI.CreatePlan keeps the best score, whether native or added here),
+        // so it only takes over when no special action is usable — a safety net
+        // that consumes the remaining ActionPoint instead of wasting it, without
+        // changing behaviour the rest of the time.
+        //
+        // IMPORTANT: unlike the 2 previous fixes (RegainAbilityIfMaxxedOut,
+        // replenishCooldownAfterEffectsEnd), which were validated by direct,
+        // unambiguous IL proof, the exact construction/scoring of
+        // FollowPlayerMeleeBehaviour remains a reasonable hypothesis, to be
+        // confirmed in-game. Confirmed by log for ElvenSummoner (it does use its
+        // ActionPoint=4 on nearly all of its turns after this fix, except the very
+        // first turn before any player has been detected).
         private static void PatchBossFallbackBehaviour()
         {
             try
@@ -262,54 +235,40 @@ using UnityEngine;
             catch { }
         }
 
-        /// <summary>
-        /// The safety net above wasn't triggering.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// Decompiling FollowPlayerMeleeBehaviour.PlanNextAction: the very first thing
-        /// this native method does is
-        /// <c>if (!piece.IsConfused() &amp;&amp; !piece.IsBot()) return;</c> — WITHOUT
-        /// ever touching CurrentScore (which therefore stays at -1, set by
-        /// Behaviour.Prepare() just before, and ignored by PieceAI.CreatePlan()).
-        /// Boardgame.PieceType.Bot (value 22, confirmed via the Constant table) is
-        /// NOT set on an ordinary hostile boss/mob — this Behaviour is clearly meant
-        /// for "Bot" pieces (AI-controlled allies, e.g. WarlockMinion) or for the
-        /// Confused state, not to serve as a generic safety net for a normal hostile
-        /// boss. Result: our instance added in the Postfix above did STRICTLY
-        /// NOTHING for the targeted bosses — confirmed empirically by the logs.
-        /// </para>
-        /// <para>
-        /// Fix: we do NOT touch the native IsBot()/IsConfused() behaviour for the
-        /// rest of the game (too risky — IsBot() is used by ~20 other methods: UI
-        /// colors, turn order, saving...). We restrict the workaround to the SOLE
-        /// execution window of PlanNextAction on OUR specific instances
-        /// (<see cref="_ourFallbackInstances"/>, tracked by reference):
-        /// </para>
-        /// <list type="number">
-        /// <item><description>
-        /// Prefix on FollowPlayerMeleeBehaviour.PlanNextAction: if __instance is one
-        /// of ours, sets the static flag <see cref="_forceIsBotForFallback"/> (saving
-        /// the previous value in __state, guarding against re-entrancy).
-        /// </description></item>
-        /// <item><description>
-        /// Prefix on Piece.IsBot(): if the flag is set, short-circuits and returns
-        /// true without running the native body.
-        /// </description></item>
-        /// <item><description>
-        /// Postfix on PlanNextAction: restores the flag to its value from before the
-        /// call.
-        /// </description></item>
-        /// </list>
-        /// <para>
-        /// Verified by decompilation that IsBot() is not called anywhere else in
-        /// PlanNextAction's call chain (ChooseAttackTarget/OwnerHeatMap/
-        /// GetPlayerHeatmap/MoveTowardsTile/FindPortalToShortcutThrough/
-        /// GetPlayerPieces — none of these names appear among IsBot()'s callers), so
-        /// there is no possible leak into evaluating another piece during this same
-        /// window.
-        /// </para>
-        /// </remarks>
+        // The safety net above wasn't triggering.
+        //
+        // Decompiling FollowPlayerMeleeBehaviour.PlanNextAction: the very first
+        // thing this native method does is if (!piece.IsConfused() &&
+        // !piece.IsBot()) return; — WITHOUT ever touching CurrentScore (which
+        // therefore stays at -1, set by Behaviour.Prepare() just before, and
+        // ignored by PieceAI.CreatePlan()). Boardgame.PieceType.Bot (value 22,
+        // confirmed via the Constant table) is NOT set on an ordinary hostile
+        // boss/mob — this Behaviour is clearly meant for "Bot" pieces
+        // (AI-controlled allies, e.g. WarlockMinion) or for the Confused state,
+        // not to serve as a generic safety net for a normal hostile boss. Result:
+        // our instance added in the Postfix above did STRICTLY NOTHING for the
+        // targeted bosses — confirmed empirically by the logs.
+        //
+        // Fix: we do NOT touch the native IsBot()/IsConfused() behaviour for the
+        // rest of the game (too risky — IsBot() is used by ~20 other methods: UI
+        // colors, turn order, saving...). We restrict the workaround to the SOLE
+        // execution window of PlanNextAction on OUR specific instances
+        // (_ourFallbackInstances, tracked by reference):
+        //
+        //   1. Prefix on FollowPlayerMeleeBehaviour.PlanNextAction: if __instance
+        //      is one of ours, sets the static flag _forceIsBotForFallback (saving
+        //      the previous value in __state, guarding against re-entrancy).
+        //   2. Prefix on Piece.IsBot(): if the flag is set, short-circuits and
+        //      returns true without running the native body.
+        //   3. Postfix on PlanNextAction: restores the flag to its value from
+        //      before the call.
+        //
+        // Verified by decompilation that IsBot() is not called anywhere else in
+        // PlanNextAction's call chain (ChooseAttackTarget/OwnerHeatMap/
+        // GetPlayerHeatmap/MoveTowardsTile/FindPortalToShortcutThrough/
+        // GetPlayerPieces — none of these names appear among IsBot()'s callers),
+        // so there is no possible leak into evaluating another piece during this
+        // same window.
         private static void PatchFollowPlayerMeleeBehaviourGate()
         {
             try
@@ -543,13 +502,10 @@ using UnityEngine;
             // all native stats are already stabilized.
         }
 
-        /// <summary>
-        /// pieceIds of player pieces that already received the "2 knockdowns at
-        /// level 0" bonus.
-        /// </summary>
-        /// <remarks>
-        /// Idempotence guard — only one StartTurn should count, never re-applied.
-        /// </remarks>
+        // pieceIds of player pieces that already received the "2 knockdowns at
+        // level 0" bonus.
+        //
+        // Idempotence guard — only one StartTurn should count, never re-applied.
         private static readonly HashSet<int> _level0KnockdownBonusApplied = new();
 
         private static void ApplyLevel0KnockdownBonusOnce(SerializableEventQueue instance, SerializableEvent request)

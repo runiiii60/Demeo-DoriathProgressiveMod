@@ -1,3 +1,37 @@
+// ============================================================
+//  Doriath (PROGRESSIVE) — AbilityNoAllyDamageRule.cs
+// ============================================================
+//
+// DeathBeam (Sorcerer) must not deal damage to allies, just like
+// MinionCharge (which by its native design never hits an ally: a
+// direct-target ability aimed at a single enemy). No HouseRules JSON
+// parameter exposes this per ability (PartyDamageOverriddenRule, already
+// active in the JSON, only covers Electricity/Zap damage between players).
+// DeathBeam, on the other hand, is a beam that hits everything in its
+// path, allies included.
+//
+// Same technique as IceExplosion's self-damage safeguard (see
+// AbilityMayNotTargetSelfRule.cs): a Harmony Prefix on Damage.DealDamage()
+// (type looked up by full name, then by short name) that cancels the
+// result (returns 0, skips the original method) as soon as:
+//
+// 1) the attacker AND the target are both "player" Pieces (IsPlayer(), the
+//    same method used natively in PartyDamageOverriddenRule),
+//
+// 2) AND the ability involved is part of the `Abilities` list below
+//    (filtered via ToString() of the Damage object, same method as the
+//    other rule — the exact internal field storing the AbilityKey on
+//    Damage was not confirmed by decompilation).
+//
+// Deliberately generic (a list, like AbilityMayNotTargetSelfHardcoded):
+// adding an ability here is enough to extend this behavior later, without
+// duplicating the mechanism.
+//
+// Reliability: fully defensive (try/catch everywhere, log + skip if a
+// type/field/method is not found, never crashes). Blocks ONLY the precise
+// case "listed ability + player on player" — everything else (damage to
+// monsters, damage from a monster to a player) proceeds normally.
+
 namespace DoriathMod.Rules
 {
     using System;
@@ -7,43 +41,6 @@ namespace DoriathMod.Rules
     using DataKeys;
     using HarmonyLib;
 
-    /// <summary>
-    /// DeathBeam (Sorcerer) must not deal damage to allies, just like MinionCharge
-    /// (which by its native design never hits an ally: a direct-target ability aimed
-    /// at a single enemy). No HouseRules JSON parameter exposes this per ability
-    /// (PartyDamageOverriddenRule, already active in the JSON, only covers
-    /// Electricity/Zap damage between players). DeathBeam, on the other hand, is a
-    /// beam that hits everything in its path, allies included.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Same technique as IceExplosion's self-damage safeguard (see
-    /// AbilityMayNotTargetSelfRule.cs): a Harmony Prefix on Damage.DealDamage()
-    /// (type looked up by full name, then by short name) that cancels the result
-    /// (returns 0, skips the original method) as soon as:
-    /// </para>
-    /// <para>
-    /// 1) the attacker AND the target are both "player" Pieces (IsPlayer(), the same
-    /// method used natively in PartyDamageOverriddenRule),
-    /// </para>
-    /// <para>
-    /// 2) AND the ability involved is part of the `Abilities` list below (filtered via
-    /// ToString() of the Damage object, same method as the other rule — the exact
-    /// internal field storing the AbilityKey on Damage was not confirmed by
-    /// decompilation).
-    /// </para>
-    /// <para>
-    /// Deliberately generic (a list, like AbilityMayNotTargetSelfHardcoded): adding an
-    /// ability here is enough to extend this behavior later, without duplicating the
-    /// mechanism.
-    /// </para>
-    /// <para>
-    /// Reliability: fully defensive (try/catch everywhere, log + skip if a
-    /// type/field/method is not found, never crashes). Blocks ONLY the precise case
-    /// "listed ability + player on player" — everything else (damage to monsters,
-    /// damage from a monster to a player) proceeds normally.
-    /// </para>
-    /// </remarks>
     public static class AbilityNoAllyDamageHardcoded
     {
         private static readonly List<AbilityKey> Abilities = new List<AbilityKey>

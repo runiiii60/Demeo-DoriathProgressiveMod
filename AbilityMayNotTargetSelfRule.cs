@@ -1,3 +1,37 @@
+// ============================================================
+//  Doriath (PROGRESSIVE) — AbilityMayNotTargetSelfRule.cs
+// ============================================================
+//
+// Fixes a native bug: IceExplosion (Warlock) deals damage to the Warlock
+// themself, even though they should be immune to their own attack.
+//
+// Two mechanisms combined:
+//
+// 1) mayTargetSelf = false on IceExplosion (native Ability field), applied
+//    once at game startup via
+//    AbilityFactory.LoadAbility(key).OnLoaded(...). Not sufficient on its
+//    own: according to the logs, this field only governs initial target
+//    selection, not damage resolution for an area ability (the explosion
+//    hits everything within its radius, regardless of this flag).
+//
+// 2) The real safeguard: a Prefix on Damage.DealDamage() that blocks the
+//    damage (returns 0, skips the original method) as soon as the target
+//    piece IS LITERALLY THE SAME INSTANCE as the attacking piece
+//    (ReferenceEquals) AND the attack comes from an ability in the
+//    `Abilities` list below. Filtered via ToString() of the Damage object
+//    (the exact internal field storing the AbilityKey was not identified
+//    by decompilation).
+//
+// Both mechanisms are kept together: the first remains harmless and may
+// have a real effect on other simple, non-AOE single-target abilities; the
+// second is the safety net that guarantees the result regardless of the
+// actual internal mechanism.
+//
+// Reliability: fully defensive (try/catch everywhere, log + skip if a
+// type/field/method is not found, never crashes). The Prefix ONLY blocks
+// the precise case "same piece on both sides + listed ability" — any other
+// damage resolution proceeds normally.
+
 namespace DoriathMod.Rules
 {
     using System;
@@ -8,60 +42,20 @@ namespace DoriathMod.Rules
     using DataKeys;
     using HarmonyLib;
 
-    /// <summary>
-    /// Fixes a native bug: IceExplosion (Warlock) deals damage to the Warlock
-    /// themself, even though they should be immune to their own attack.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Two mechanisms combined:
-    /// </para>
-    /// <para>
-    /// 1) mayTargetSelf = false on IceExplosion (native Ability field), applied once
-    /// at game startup via AbilityFactory.LoadAbility(key).OnLoaded(...). Not
-    /// sufficient on its own: according to the logs, this field only governs initial
-    /// target selection, not damage resolution for an area ability (the explosion
-    /// hits everything within its radius, regardless of this flag).
-    /// </para>
-    /// <para>
-    /// 2) The real safeguard: a Prefix on Damage.DealDamage() that blocks the damage
-    /// (returns 0, skips the original method) as soon as the target piece IS
-    /// LITERALLY THE SAME INSTANCE as the attacking piece (ReferenceEquals) AND the
-    /// attack comes from an ability in the `Abilities` list below. Filtered via
-    /// ToString() of the Damage object (the exact internal field storing the
-    /// AbilityKey was not identified by decompilation).
-    /// </para>
-    /// <para>
-    /// Both mechanisms are kept together: the first remains harmless and may have a
-    /// real effect on other simple, non-AOE single-target abilities; the second is
-    /// the safety net that guarantees the result regardless of the actual internal
-    /// mechanism.
-    /// </para>
-    /// <para>
-    /// Reliability: fully defensive (try/catch everywhere, log + skip if a
-    /// type/field/method is not found, never crashes). The Prefix ONLY blocks the
-    /// precise case "same piece on both sides + listed ability" — any other damage
-    /// resolution proceeds normally.
-    /// </para>
-    /// </remarks>
     public static class AbilityMayNotTargetSelfHardcoded
     {
-        /// <summary>
-        /// Shared by both mechanisms below (mayTargetSelf mutation AND damage
-        /// blocking on DealDamage).
-        /// </summary>
+        // Shared by both mechanisms below (mayTargetSelf mutation AND damage
+        // blocking on DealDamage).
         private static readonly List<AbilityKey> Abilities = new List<AbilityKey>
         {
             AbilityKey.IceExplosion,
         };
 
-        /// <summary>
-        /// Sub-list of names (string) used for the quick filter on damage.ToString()
-        /// (which contains "for ability &lt;Name&gt;") — avoids having to locate by
-        /// reflection the exact field that stores the AbilityKey on the Damage
-        /// object (never confirmed by decompilation; the same caution was applied
-        /// for Zap/BarkArmor elsewhere).
-        /// </summary>
+        // Sub-list of names (string) used for the quick filter on
+        // damage.ToString() (which contains "for ability <Name>") — avoids having
+        // to locate by reflection the exact field that stores the AbilityKey on
+        // the Damage object (never confirmed by decompilation; the same caution
+        // was applied for Zap/BarkArmor elsewhere).
         private static readonly string[] AbilityNames = Abilities.Select(a => a.ToString()).ToArray();
 
         public static void Patch(Harmony harmony)
@@ -70,7 +64,7 @@ namespace DoriathMod.Rules
             PatchDealDamageSelfHitGuard(harmony);
         }
 
-        /// <summary>Mechanism 1: mayTargetSelf mutation (kept, harmless).</summary>
+        // Mechanism 1: mayTargetSelf mutation (kept, harmless).
         private static void PatchMayTargetSelfMutation(Harmony harmony)
         {
             var lifecycleDirectorType = AccessTools.TypeByName("HouseRules.Core.LifecycleDirector");
@@ -119,7 +113,7 @@ namespace DoriathMod.Rules
             }
         }
 
-        /// <summary>Mechanism 2: safeguard on DealDamage (the real safety net).</summary>
+        // Mechanism 2: safeguard on DealDamage (the real safety net).
         private static void PatchDealDamageSelfHitGuard(Harmony harmony)
         {
             // Try the full name first (most likely namespace given the rest of the
@@ -178,10 +172,8 @@ namespace DoriathMod.Rules
                 string.Join(", ", Abilities));
         }
 
-        /// <summary>
-        /// Extracts the underlying Piece object from an argument that can be either a
-        /// Piece directly, or a Target (a struct with a "piece" field).
-        /// </summary>
+        // Extracts the underlying Piece object from an argument that can be either
+        // a Piece directly, or a Target (a struct with a "piece" field).
         private static object ExtractPiece(object arg)
         {
             if (arg == null) return null;

@@ -1,3 +1,109 @@
+// ============================================================
+//  Doriath (PROGRESSIVE) — AIDirectorConfigRule.cs
+// ============================================================
+//
+// Makes a set of AI Director (Boardgame.AIDirector.*) constants moddable:
+// spawn "budget", zone/saturation "percentages", and per-zone enemy count
+// "caps" — beyond just the boss budget (see BossSpawnBudgetAdjustedRule).
+//
+// Two constant sources, two different mechanisms:
+//
+// 1) Data.GameData.AIDirectorConfig — a STATIC class, values set once in
+//    its static constructor (.cctor) then read everywhere via ldsfld. No
+//    Harmony patch is needed here: the static fields are written directly
+//    via reflection, once, at mod load time (Patch()). The CLR guarantees
+//    the native .cctor runs before any access (read OR write) to a static
+//    field of this type once it's touched via reflection — its execution
+//    is still forced explicitly before overwriting the values, to be
+//    certain it can never "catch up" and stomp on them afterward.
+//
+// Exposed fields:
+//
+//   Parameter : Native / Role
+//   - EasySpawnBudgetMultiplier : 0.3 — Ambient spawn budget multiplier on
+//     Easy difficulty
+//   - NormalSpawnBudgetMultiplier : 1.0 — Same, on Normal difficulty
+//   - ActivePowerIndexInLevelSoftRoof : 275 — Soft cap on total active
+//     power on the board
+//   - MaxNumberOfUnitsOnBoardHardCap : 50 — HARD cap on the total number
+//     of units on the board, all types combined
+//   - AllowedSpawnZoneSaturation : 0.8 — Max fraction of a zone's tiles
+//     "spent" before dynamic spawning stops in that zone (CustomSpawn)
+//   - SpikeTrigger_MediumMap_ZoneDiscoveryPercentage : 0.5 — % of a medium
+//     map that must be discovered before a difficulty spike can trigger
+//   - SpikeTrigger_LargeMap_ZoneDiscoveryPercentage : 0.6 — Same, for a
+//     large map
+//   - MaxNumberOfEasyUnitsPerZone : 7 — Per-zone cap on Easy enemies
+//     (SpawnZone's numEasyEnemies counter)
+//   - MaxNumberOfMediumUnitsPerZone : 5 — Same for Medium enemies
+//     (numMediumEnemies)
+//   - MaxNumberOfStrongUnitsPerZone : 4 — Same for Strong enemies
+//     (numStrongEnemies)
+//
+// 2) Boardgame.AIDirector.AIDirectorController2 — INSTANCE fields, set on
+//    every construction (parameterless .ctor()) of the controller. This
+//    requires a classic Harmony Postfix (no Transpiler: these are plain
+//    field assignments, so much more reliable than
+//    BossSpawnBudgetAdjustedRule) on this constructor, to overwrite the
+//    values right after their native initialization.
+//
+// Exposed fields (per-zone map-coverage %, used by TagSpawnZones() to
+// classify discovered tiles into Zone1/Zone2/Zone2_OuterRing):
+//
+//   Parameter : Native / Role
+//   - Zone1_Large_PercentCoverage : 0.25 — Zone1 coverage % on a large map
+//   - Zone1_Medium_PercentCoverage : 0.32 — Zone1 coverage % on a medium
+//     map
+//   - Zone1_Small_PercentCoverage : 0.32 — Zone1 coverage % on a small map
+//   - Zone2_Large_PercentCoverage : 0.46 — Zone2 coverage % on a large map
+//   - Zone2_Medium_PercentCoverage : 0.44 — Zone2 coverage % on a medium
+//     map
+//   - Zone2_Small_PercentCoverage : 0.42 — Zone2 coverage % on a small map
+//   - Zone2_OuterRing_Large_PercentCoverage : 0.0 — Zone2 outer-ring
+//     coverage %, large map (never natively initialized, so 0 confirmed by
+//     decompilation)
+//   - Zone2_OuterRing_Medium_PercentCoverage : 0.0 — Same, medium map
+//   - Zone2_OuterRing_Small_PercentCoverage : 0.0 — Same, small map
+//
+// WARNING for aggressive settings: monster deck exhaustion. These
+// parameters increase how many monsters the director draws to populate a
+// map (spawn budget, zone saturation, unit cap). Each draw consumes one
+// card from that floor's monster deck (MonsterDeckOverridden in the
+// ruleset JSON). If the deck is too small for the spawn volume these
+// values allow, it can run out before population finishes -> draw from an
+// empty list -> an UNHANDLED exception that silently kills the level-load
+// coroutine: the level never loads, with no visible error message. Since
+// the number of draws depends on the map and the seed, the crash is
+// intermittent, not systematic. When raising
+// EasySpawnBudgetMultiplier/NormalSpawnBudgetMultiplier/
+// AllowedSpawnZoneSaturation/MaxNumberOfUnitsOnBoardHardCap beyond this
+// ruleset's values, scale up MonsterDeckOverridden's quantities
+// proportionally for every floor deck (EntranceDeckFloor1/2,
+// ExitDeckFloor1/2, BossDeck).
+//
+// Reliability: unlike BossSpawnBudgetAdjustedRule's Transpiler patch
+// (which relies on an exact IL pattern), this rule uses ONLY simple field
+// writes (reflection + a trivial Postfix) — much more robust against a
+// game update, as long as field names stay the same (checked individually
+// by name at load time, with a log warning if a field is missing, never
+// crashing the rest of the mod).
+//
+// All default values below are the NATIVE values (so default config =
+// unchanged behavior).
+//
+// Timing bug avoided: Patch(Harmony harmony) is called ONCE, globally, at
+// the very start of game loading — BEFORE the active ruleset's JSON is
+// even read. Writing Data.GameData.AIDirectorConfig's static fields
+// DIRECTLY in Patch() would mean they are ALWAYS written with _config
+// still null -> native default values, never the JSON's. Hence: the static
+// field writes (part 1 above) happen in OnActivate(Context) — called by
+// HouseRules on every (re)activation of the ruleset (once per map/floor),
+// i.e. AFTER the JSON has been imported and the constructor with Config
+// has already run. Part 2 (Postfix on AIDirectorController2's constructor)
+// doesn't have this problem: its body re-reads _config LIVE every time a
+// new controller is built (so after activation), not just once at load
+// time.
+
 namespace DoriathMod.Rules
 {
     using System;
@@ -7,97 +113,6 @@ namespace DoriathMod.Rules
     using HarmonyLib;
     using HouseRules.Core.Types;
 
-    /// <summary>
-    /// Makes a set of AI Director (<c>Boardgame.AIDirector.*</c>) constants moddable: spawn
-    /// "budget", zone/saturation "percentages", and per-zone enemy count "caps" — beyond just
-    /// the boss budget (see <see cref="BossSpawnBudgetAdjustedRule"/>).
-    /// </summary>
-    /// <remarks>
-    /// <para>Two constant sources, two different mechanisms:</para>
-    /// <para>
-    /// 1) <c>Data.GameData.AIDirectorConfig</c> — a STATIC class, values set once in its
-    /// static constructor (<c>.cctor</c>) then read everywhere via <c>ldsfld</c>. No Harmony
-    /// patch is needed here: the static fields are written directly via reflection, once, at
-    /// mod load time (<c>Patch()</c>). The CLR guarantees the native <c>.cctor</c> runs
-    /// before any access (read OR write) to a static field of this type once it's touched via
-    /// reflection — its execution is still forced explicitly before overwriting the values,
-    /// to be certain it can never "catch up" and stomp on them afterward.
-    /// </para>
-    /// <para>Exposed fields:</para>
-    /// <list type="table">
-    ///   <listheader><term>Parameter</term><description>Native / Role</description></listheader>
-    ///   <item><term>EasySpawnBudgetMultiplier</term><description>0.3 — Ambient spawn budget multiplier on Easy difficulty</description></item>
-    ///   <item><term>NormalSpawnBudgetMultiplier</term><description>1.0 — Same, on Normal difficulty</description></item>
-    ///   <item><term>ActivePowerIndexInLevelSoftRoof</term><description>275 — Soft cap on total active power on the board</description></item>
-    ///   <item><term>MaxNumberOfUnitsOnBoardHardCap</term><description>50 — HARD cap on the total number of units on the board, all types combined</description></item>
-    ///   <item><term>AllowedSpawnZoneSaturation</term><description>0.8 — Max fraction of a zone's tiles "spent" before dynamic spawning stops in that zone (CustomSpawn)</description></item>
-    ///   <item><term>SpikeTrigger_MediumMap_ZoneDiscoveryPercentage</term><description>0.5 — % of a medium map that must be discovered before a difficulty spike can trigger</description></item>
-    ///   <item><term>SpikeTrigger_LargeMap_ZoneDiscoveryPercentage</term><description>0.6 — Same, for a large map</description></item>
-    ///   <item><term>MaxNumberOfEasyUnitsPerZone</term><description>7 — Per-zone cap on Easy enemies (SpawnZone's <c>numEasyEnemies</c> counter)</description></item>
-    ///   <item><term>MaxNumberOfMediumUnitsPerZone</term><description>5 — Same for Medium enemies (<c>numMediumEnemies</c>)</description></item>
-    ///   <item><term>MaxNumberOfStrongUnitsPerZone</term><description>4 — Same for Strong enemies (<c>numStrongEnemies</c>)</description></item>
-    /// </list>
-    /// <para>
-    /// 2) <c>Boardgame.AIDirector.AIDirectorController2</c> — INSTANCE fields, set on every
-    /// construction (parameterless <c>.ctor()</c>) of the controller. This requires a classic
-    /// Harmony Postfix (no Transpiler: these are plain field assignments, so much more
-    /// reliable than <see cref="BossSpawnBudgetAdjustedRule"/>) on this constructor, to
-    /// overwrite the values right after their native initialization.
-    /// </para>
-    /// <para>
-    /// Exposed fields (per-zone map-coverage %, used by <c>TagSpawnZones()</c> to classify
-    /// discovered tiles into Zone1/Zone2/Zone2_OuterRing):
-    /// </para>
-    /// <list type="table">
-    ///   <listheader><term>Parameter</term><description>Native / Role</description></listheader>
-    ///   <item><term>Zone1_Large_PercentCoverage</term><description>0.25 — Zone1 coverage % on a large map</description></item>
-    ///   <item><term>Zone1_Medium_PercentCoverage</term><description>0.32 — Zone1 coverage % on a medium map</description></item>
-    ///   <item><term>Zone1_Small_PercentCoverage</term><description>0.32 — Zone1 coverage % on a small map</description></item>
-    ///   <item><term>Zone2_Large_PercentCoverage</term><description>0.46 — Zone2 coverage % on a large map</description></item>
-    ///   <item><term>Zone2_Medium_PercentCoverage</term><description>0.44 — Zone2 coverage % on a medium map</description></item>
-    ///   <item><term>Zone2_Small_PercentCoverage</term><description>0.42 — Zone2 coverage % on a small map</description></item>
-    ///   <item><term>Zone2_OuterRing_Large_PercentCoverage</term><description>0.0 — Zone2 outer-ring coverage %, large map (never natively initialized, so 0 confirmed by decompilation)</description></item>
-    ///   <item><term>Zone2_OuterRing_Medium_PercentCoverage</term><description>0.0 — Same, medium map</description></item>
-    ///   <item><term>Zone2_OuterRing_Small_PercentCoverage</term><description>0.0 — Same, small map</description></item>
-    /// </list>
-    /// <para>
-    /// WARNING for aggressive settings: monster deck exhaustion. These parameters increase
-    /// how many monsters the director draws to populate a map (spawn budget, zone saturation,
-    /// unit cap). Each draw consumes one card from that floor's monster deck
-    /// (<c>MonsterDeckOverridden</c> in the ruleset JSON). If the deck is too small for the
-    /// spawn volume these values allow, it can run out before population finishes -&gt; draw
-    /// from an empty list -&gt; an UNHANDLED exception that silently kills the level-load
-    /// coroutine: the level never loads, with no visible error message. Since the number of
-    /// draws depends on the map and the seed, the crash is intermittent, not systematic. When
-    /// raising <c>EasySpawnBudgetMultiplier</c>/<c>NormalSpawnBudgetMultiplier</c>/
-    /// <c>AllowedSpawnZoneSaturation</c>/<c>MaxNumberOfUnitsOnBoardHardCap</c> beyond this
-    /// ruleset's values, scale up <c>MonsterDeckOverridden</c>'s quantities proportionally for
-    /// every floor deck (EntranceDeckFloor1/2, ExitDeckFloor1/2, BossDeck).
-    /// </para>
-    /// <para>
-    /// Reliability: unlike <see cref="BossSpawnBudgetAdjustedRule"/>'s Transpiler patch
-    /// (which relies on an exact IL pattern), this rule uses ONLY simple field writes
-    /// (reflection + a trivial Postfix) — much more robust against a game update, as long as
-    /// field names stay the same (checked individually by name at load time, with a log
-    /// warning if a field is missing, never crashing the rest of the mod).
-    /// </para>
-    /// <para>
-    /// All default values below are the NATIVE values (so default config = unchanged
-    /// behavior).
-    /// </para>
-    /// <para>
-    /// Timing bug avoided: <c>Patch(Harmony harmony)</c> is called ONCE, globally, at the very
-    /// start of game loading — BEFORE the active ruleset's JSON is even read. Writing
-    /// <c>Data.GameData.AIDirectorConfig</c>'s static fields DIRECTLY in <c>Patch()</c> would
-    /// mean they are ALWAYS written with <c>_config</c> still null -&gt; native default
-    /// values, never the JSON's. Hence: the static field writes (part 1 above) happen in
-    /// <c>OnActivate(Context)</c> — called by HouseRules on every (re)activation of the
-    /// ruleset (once per map/floor), i.e. AFTER the JSON has been imported and the constructor
-    /// with Config has already run. Part 2 (Postfix on <c>AIDirectorController2</c>'s
-    /// constructor) doesn't have this problem: its body re-reads <c>_config</c> LIVE every
-    /// time a new controller is built (so after activation), not just once at load time.
-    /// </para>
-    /// </remarks>
     public sealed class AIDirectorConfigRule : Rule, IConfigWritable<Dictionary<string, double>>, IPatchable, IMultiplayerSafe
     {
         public override string Description =>
@@ -156,11 +171,9 @@ namespace DoriathMod.Rules
 
         protected override void OnDeactivate(Context context) { }
 
-        /// <summary>
-        /// Part 1 — <c>Data.GameData.AIDirectorConfig</c>'s static fields. Called from
-        /// <see cref="OnActivate"/> (NOT <c>Patch()</c> — see the class-level remarks) to be
-        /// certain <c>_config</c> is read AFTER it's loaded from the JSON.
-        /// </summary>
+        // Part 1 — Data.GameData.AIDirectorConfig's static fields. Called from
+        // OnActivate (NOT Patch() — see the class-level remarks) to be certain
+        // _config is read AFTER it's loaded from the JSON.
         private static void ApplyStaticAIDirectorConfig()
         {
             var values = _config ?? NativeDefaults;

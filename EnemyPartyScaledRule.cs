@@ -1,3 +1,25 @@
+// ============================================================
+//  Doriath (PROGRESSIVE) — EnemyPartyScaledRule.cs
+// ============================================================
+//
+// Replaces EnemyAttackScaled and EnemyHealthScaled (HouseRules.Essentials)
+// with a DYNAMIC multiplier that tracks the party's AVERAGE displayed
+// level (0-9, same convention as ProgressiveLevelRule.cs: displayed level
+// = internal CritChance - 1). Recalculated every time an enemy is created
+// (same hook point as the two native rules: Piece.CreatePiece, postfix),
+// so it is fully automatic across the three maps of a run and reacts if
+// the average level changes mid-run.
+//
+// Starting tier (party level 0) matches the native rules' values: Attack
+// x1.1, Health x1.1 (so the very start of the game is unchanged), scaling
+// up to a cap at average level 9 (full party) of Attack x1.4 / Health
+// x1.9. The curve is LINEAR (exponent 1): each average level adds the same
+// amount of scaling from start to end.
+//
+// IMPORTANT: EnemyAttackScaled and EnemyHealthScaled must stay DISABLED in
+// the ruleset JSON (same hook point would otherwise cause double scaling).
+// See Doriath (PROGRESSIVE).json.
+
 namespace DoriathMod.Rules
 {
     using System.Collections.Generic;
@@ -8,28 +30,6 @@ namespace DoriathMod.Rules
     using HouseRules.Core.Types;
     using UnityEngine;
 
-    /// <summary>
-    /// Replaces EnemyAttackScaled and EnemyHealthScaled (HouseRules.Essentials) with a
-    /// DYNAMIC multiplier that tracks the party's AVERAGE displayed level (0-9, same
-    /// convention as ProgressiveLevelRule.cs: displayed level = internal CritChance - 1).
-    /// Recalculated every time an enemy is created (same hook point as the two native
-    /// rules: Piece.CreatePiece, postfix), so it is fully automatic across the three
-    /// maps of a run and reacts if the average level changes mid-run.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Starting tier (party level 0) matches the native rules' values: Attack x1.1,
-    /// Health x1.1 (so the very start of the game is unchanged), scaling up to a cap
-    /// at average level 9 (full party) of Attack x1.4 / Health x1.9. The curve is
-    /// LINEAR (exponent 1): each average level adds the same amount of scaling from
-    /// start to end.
-    /// </para>
-    /// <para>
-    /// IMPORTANT: EnemyAttackScaled and EnemyHealthScaled must stay DISABLED in the
-    /// ruleset JSON (same hook point would otherwise cause double scaling). See
-    /// Doriath (PROGRESSIVE).json.
-    /// </para>
-    /// </remarks>
     public sealed class EnemyPartyScaledRule : Rule, IConfigWritable<bool>, IPatchable, IMultiplayerSafe
     {
         // Scaling values by the party's average displayed level (linear formula
@@ -109,11 +109,10 @@ namespace DoriathMod.Rules
             __result.effectSink.TrySetStatBaseValue(Stats.Type.Health, newHealth);
         }
 
-        /// <summary>
-        /// Average of the DISPLAYED levels (0-9) of the heroes currently in the game.
-        /// Recalculated on every call (i.e. every time an enemy is created), so it
-        /// tracks progression in real time with no per-map configuration needed.
-        /// </summary>
+        // Average of the DISPLAYED levels (0-9) of the heroes currently in the
+        // game. Recalculated on every call (i.e. every time an enemy is created),
+        // so it tracks progression in real time with no per-map configuration
+        // needed.
         private static float GetPartyAverageLevel()
         {
             try

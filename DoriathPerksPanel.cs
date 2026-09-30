@@ -1,3 +1,22 @@
+// ============================================================
+//  Doriath (PROGRESSIVE) — DoriathPerksPanel.cs
+// ============================================================
+//
+// Fixed, persistent VR panel ("Panel 2") displaying the description of
+// Doriath (PROGRESSIVE) mode and the generic detail of level tiers (1 to
+// 10) for all heroes. Separate from the "Active Rules" panel (Panel 1,
+// native HouseRules).
+//
+// Faithfully reproduces the native mechanism of
+// HouseRules.Configuration.UI.HouseRulesUiGameVr3 (used natively for the
+// "Perks and Leveling-Up" panel): same wait for readiness
+// (VrElementCreator.IsReady() + presence of the native "~LeanTween" object
+// that serves as the "scene ready" signal), same anchor, same
+// parchment-background technique (VrResourceTable.MenuMesh/MenuMaterial)
+// dynamically sized to the text length, and same layout (title via
+// CreateMenuHeaderText, body via CreateLeftText). Positioned at the same
+// spot as the native panel: (7, 41.4, -53), rotation (0, 180, 0).
+
 namespace DoriathMod
 {
     using System.Collections;
@@ -8,22 +27,6 @@ namespace DoriathMod
     using Common.UI.Element;
     using UnityEngine;
 
-    /// <summary>
-    /// Fixed, persistent VR panel ("Panel 2") displaying the description of Doriath
-    /// (PROGRESSIVE) mode and the generic detail of level tiers (1 to 10) for all
-    /// heroes. Separate from the "Active Rules" panel (Panel 1, native HouseRules).
-    /// </summary>
-    /// <remarks>
-    /// Faithfully reproduces the native mechanism of
-    /// HouseRules.Configuration.UI.HouseRulesUiGameVr3 (used natively for the
-    /// "Perks and Leveling-Up" panel): same wait for readiness
-    /// (VrElementCreator.IsReady() + presence of the native "~LeanTween" object that
-    /// serves as the "scene ready" signal), same anchor, same parchment-background
-    /// technique (VrResourceTable.MenuMesh/MenuMaterial) dynamically sized to the
-    /// text length, and same layout (title via CreateMenuHeaderText, body via
-    /// CreateLeftText). Positioned at the same spot as the native panel:
-    /// (7, 41.4, -53), rotation (0, 180, 0).
-    /// </remarks>
     internal sealed class DoriathPerksPanel : MonoBehaviour
     {
         private const string BodyText =

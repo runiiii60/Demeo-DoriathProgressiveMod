@@ -1,3 +1,12 @@
+// ============================================================
+//  Doriath (PROGRESSIVE) — PieceProgressLostRule.cs
+// ============================================================
+//
+// Makes a hero lose a level of experience when revived via
+// MotherTracker.TrackRevive, reversing the perks gained at the lost level.
+//
+// Based on PieceProgressLostRule by TheGrayAlien.
+
 namespace DoriathMod.Rules
 {
     using System;
@@ -9,13 +18,6 @@ namespace DoriathMod.Rules
     using HouseRules.Core;
     using HouseRules.Core.Types;
 
-    /// <summary>
-    /// Makes a hero lose a level of experience when revived via MotherTracker.TrackRevive, reversing the
-    /// perks gained at the lost level.
-    /// </summary>
-    /// <remarks>
-    /// Based on PieceProgressLostRule by TheGrayAlien.
-    /// </remarks>
     public sealed class DoriathXpLossRule : Rule, IConfigWritable<bool>, IPatchable, IMultiplayerSafe
     {
         public override string Description => "Heroes lose a level if revived without using magic or a potion";
