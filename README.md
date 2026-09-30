@@ -24,7 +24,33 @@ Prerequisites: [BepInEx](https://github.com/BepInEx/BepInEx) and [HouseRules](ht
 4. Launch Demeo and select the **Doriath (PROGRESSIVE)** ruleset from the HouseRules menu.
 
 ---
+## Hotfix v1.0.3
 
+### Fixes
+- **A failing hardcoded patch no longer disables the others.** 
+
+### Balance changes
+- None. This release contains no gameplay or `Doriath (PROGRESSIVE).json` change.
+
+- Plugin version bumped to 1.0.3.
+
+---
+## Hotfix v1.0.2
+
+### Fixes
+- **No more game freeze when a lamp explodes in gas**: it only concerns telemetry (metrics submission), with no effect on gameplay.
+- **`ElvenFloor09` removed from the random level pool.**
+
+### Balance changes (`Doriath (PROGRESSIVE).json` and code)
+- **Floor 2: 15% fewer enemies.** The boss floor and the boss fight itself are unchanged.
+- **Boss floor budget**: adjusted.
+- **Smaller `BossDeck`**: cut by half.
+- **`AIDirectorConfig`**: `AllowedSpawnZoneSaturation` 1.0 → 0.85, `MaxNumberOfUnitsOnBoardHardCap` 168 → 150, `ActivePowerIndexInLevelSoftRoof` 630 → 500.
+- **Verochka removed** from `MonsterDeckOverridden`.
+- **Level pool**: `DesertFloor09` replaced by `DesertFloor05`.
+- Plugin version bumped to 1.0.2.
+
+---
 ## Hotfix v1.0.1
 
 ### Fixes
@@ -42,32 +68,3 @@ Prerequisites: [BepInEx](https://github.com/BepInEx/BepInEx) and [HouseRules](ht
 - **`CardEnergyFromAttackMultiplied`**: 0.3.
 - **`EnemyPartyScaled`**: enemy health x1.1 at average party level 0 up to x1.9 at level 9.
 - Plugin version bumped to 1.0.1.
-
----
-
-## Hotfix v1.0.2
-
-### Fixes
-- **No more game freeze when a lamp explodes in gas**: it only concerns telemetry (metrics submission), with no effect on gameplay.
-- **`ElvenFloor09` removed from the random level pool.**
-
-### Balance changes (`Doriath (PROGRESSIVE).json` and code)
-- **Floor 2: 15% fewer enemies.** The boss floor and the boss fight itself are unchanged.
-- **Boss floor budget**: adjusted.
-- **Smaller `BossDeck`**: cut by half.
-- **`AIDirectorConfig`**: `AllowedSpawnZoneSaturation` 1.0 → 0.85, `MaxNumberOfUnitsOnBoardHardCap` 168 → 150, `ActivePowerIndexInLevelSoftRoof` 630 → 500.
-- **Verochka removed** from `MonsterDeckOverridden`.
-- **Level pool**: `DesertFloor09` replaced by `DesertFloor05`.
-- Plugin version bumped to 1.0.2.
-
----
-
-## Hotfix v1.0.3
-
-### Fixes
-- **A failing hardcoded patch no longer disables the others.** 
-
-### Balance changes
-- None. This release contains no gameplay or `Doriath (PROGRESSIVE).json` change.
-
-- Plugin version bumped to 1.0.3.
