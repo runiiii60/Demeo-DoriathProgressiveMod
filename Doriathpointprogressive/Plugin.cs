@@ -1,21 +1,28 @@
 // ============================================================
-//  Doriath (PROGRESSIVE) — Plugin.cs
+//  Doriath (Point Progressive) — Plugin.cs
 // ============================================================
 
 namespace DoriathMod
 {
-using System;
-using System.Reflection;
-using BepInEx;
+    using System;
+    using System.Linq;
+    using System.Reflection;
+    using BepInEx;
     using BepInEx.Logging;
     using HarmonyLib;
-using HouseRules.Core;
-using HouseRules.Core.Types;
-using DoriathMod.Rules;
+    using HouseRules.Core;
+    using HouseRules.Core.Types;
+    using DoriathMod.Hardcoded;
+    using DoriathMod.Rules;
 
     [BepInPlugin(PluginInfo.GUID, PluginInfo.NAME, PluginInfo.VERSION)]
     [BepInDependency("com.orendain.demeomods.houserules.core")]
     [BepInDependency("com.orendain.demeomods.houserules.configuration",
+        BepInDependency.DependencyFlags.SoftDependency)]
+    // Soft dependency on Doriath (PROGRESSIVE): no effect when it is absent, but
+    // when it is installed BepInEx guarantees it loads BEFORE us, which is what
+    // makes the Chainloader check below reliable.
+    [BepInDependency("com.monnom.demeomods.progressive",
         BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
@@ -30,12 +37,12 @@ using DoriathMod.Rules;
 
             try
             {
-                HR.Rulebook.Register(typeof(DoriathLevelUpRule));
-                HR.Rulebook.Register(typeof(DoriathXpLossRule));
-                HR.Rulebook.Register(typeof(FreeThingsOnLastMoveAndCritRule));
-                HR.Rulebook.Register(typeof(FreeRevolutionsAbilityOnCritRule));
-                HR.Rulebook.Register(typeof(EnemyPartyScaledRule));
-                HR.Rulebook.Register(typeof(AIDirectorConfigRule));
+                HR.Rulebook.Register(typeof(DoriathPointLevelUpRule));
+                HR.Rulebook.Register(typeof(DoriathPointLevelLossRule));
+                HR.Rulebook.Register(typeof(DoriathPointFreeThingsOnLastMoveAndCritRule));
+                HR.Rulebook.Register(typeof(DoriathPointFreeRevolutionsAbilityOnCritRule));
+                HR.Rulebook.Register(typeof(DoriathPointEnemyPartyScaledRule));
+                HR.Rulebook.Register(typeof(DoriathPointAIDirectorConfigRule));
                 Log.LogInfo("[Plugin] Rules registered.");
             }
             catch (Exception ex)
@@ -55,16 +62,29 @@ using DoriathMod.Rules;
                 Log.LogError($"[Plugin] Error in PatchAll: {ex.Message}");
             }
 
-            // ── "Hardcoded" rules (outside HouseRules/JSON/Panel 1) ──
-            // Fixed patches with no reason to be tweaked via JSON — taken out
-            // of the Rule system to stop cluttering the panel of active
-            // rules. Always active, no JSON toggle.
-            // Each patch is isolated in its own try: a patch that fails (a game
-            // method renamed by an update, for instance) must not prevent the
-            // others from being applied.
-            if (_harmony == null)
+            // ── Hardcoded patches (outside HouseRules, the JSON and Panel 1) ──
+            // Fixed behaviour, always on, with no JSON switch. They live outside the
+            // Rule system so they no longer take up room in the active-rules panel.
+            // One file per patch under Hardcoded/, each documenting what it does.
+            //
+            // These patches are IDENTICAL to the ones in Doriath (PROGRESSIVE) and
+            // apply when the plugin loads, not when the ruleset is activated. With
+            // both DLLs installed, replaying them here would double them up (the
+            // Floor2SpawnBudgetReduced -15% would land twice, for -27.75%). So when
+            // the classic mod is present we let it carry them; the soft dependency
+            // declared above guarantees it loads first, which is what makes this
+            // check reliable.
+            //
+            // Every patch is isolated in its own try: one that fails (a game method
+            // renamed by an update, for instance) must not stop the others from
+            // applying.
+            if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("com.monnom.demeomods.progressive"))
             {
-                Log.LogWarning("[Plugin] _harmony is null — hardcoded rules skipped.");
+                Log.LogInfo("[Plugin] Doriath (PROGRESSIVE) present — hardcoded patches left to it (no double patch).");
+            }
+            else if (_harmony == null)
+            {
+                Log.LogWarning("[Plugin] _harmony is null — hardcoded patches skipped.");
             }
             else
             {
@@ -73,28 +93,17 @@ using DoriathMod.Rules;
                     AbilityMayNotTargetSelfHardcoded.Patch,
                     AbilityNoAllyDamageHardcoded.Patch,
                     BerserkEndsTurnHardcoded.Patch,
-                    // Gives Berserk pieces back +1 ActionPoint/turn (via the native
-                    // EffectStateType.ExtraAction mechanism), in a capped way — completes
-                    // BerserkEndsTurnHardcoded without reintroducing the infinite-turn bug.
                     BerserkExtraActionHardcoded.Patch,
-                    // Prevents MotherCy, ElvenSummoner and RootLord from automatically
-                    // ending their turn after an ability while they still have AP left
-                    // (native game behavior: TryEndTurnAfterAttack was called without
-                    // ever checking remaining AP).
                     BossExtraActionsHardcoded.Patch,
-                    // Spawn budget around the boss and total power index budget —
-                    // taken out of the Rule/JSON system to free up space in Panel 1,
-                    // values fixed to the last active settings (see the two files
-                    // for details).
                     BossSpawnBudgetAdjustedHardcoded.Patch,
                     BossSpawnPowerIndexBudgetAdjustedHardcoded.Patch,
-                    // Hotfix v1.0.1 — see BossSpawnBudgetAdjustedRule.cs.
                     DreadElvenSummonersDisabledHardcoded.Patch,
                     RevolutionsElementImmunityDisabledHardcoded.Patch,
                     BardZapHitsEnemyPropsHardcoded.Patch,
-                    // Hotfix v1.0.2 — see BossSpawnBudgetAdjustedRule.cs.
                     TelemetryDamageCrashGuardHardcoded.Patch,
                     Floor2SpawnBudgetReducedHardcoded.Patch,
+                    // Observability: end-of-level recap in the log.
+                    LevelRecapHardcoded.Patch,
                 };
 
                 var applied = 0;
@@ -112,8 +121,10 @@ using DoriathMod.Rules;
                     }
                 }
 
-                Log.LogInfo($"[Plugin] Hardcoded rules applied ({applied}/{hardcoded.Length}).");
+                Log.LogInfo($"[Plugin] Hardcoded patches applied ({applied}/{hardcoded.Length}).");
             }
+
+            LogHarmonyReport();
 
             // Removal of GrayAlien stats (loaded after us)
             AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoaded;
@@ -161,9 +172,41 @@ using DoriathMod.Rules;
 
         private static bool SuppressGrayAlien() => false;
 
-        // The perks panel (DoriathPerksPanel) is managed directly by
-        // DoriathLevelUpRule.OnActivate()/OnDeactivate() in ProgressiveLevelRule.cs,
-        // at the same hook point as SuppressGrayAlienAdvancedStats().
+        // The perks panel (DoriathPerksPanel) is driven directly by
+        // DoriathPointLevelUpRule.OnActivate()/OnDeactivate() in ProgressiveLevelRule.cs,
+        // at the same reliable hook point as SuppressGrayAlienAdvancedStats(), rather
+        // than from here via OnSceneLoaded/OnSceneUnloaded.
+
+        // Lists, at load time, the game methods this plugin actually patched.
+        //
+        // If a Demeo update renames or removes a method, the matching patch fails
+        // silently and its line disappears from this report: the total drops, so the
+        // gap is visible straight away instead of as behaviour that evaporates in the
+        // middle of a run.
+        //
+        // Covers our Harmony instance only. Patches installed by HouseRules rules are
+        // applied by the HouseRules instance when the ruleset is activated, and
+        // AdvancedStats' own patches land after its assembly loads (see
+        // OnAssemblyLoaded).
+        private void LogHarmonyReport()
+        {
+            try
+            {
+                if (_harmony == null) return;
+
+                var patched = _harmony.GetPatchedMethods()
+                    .Select(m => $"{m.DeclaringType?.Name}.{m.Name}")
+                    .Distinct()
+                    .OrderBy(n => n, StringComparer.Ordinal)
+                    .ToArray();
+
+                Log.LogInfo($"[Plugin] {patched.Length} game methods patched: {string.Join(", ", patched)}");
+            }
+            catch (Exception ex)
+            {
+                Log.LogWarning($"[Plugin] Harmony report unavailable: {ex.Message}");
+            }
+        }
 
         private void OnDestroy()
         {
@@ -174,8 +217,8 @@ using DoriathMod.Rules;
 
     internal static class PluginInfo
     {
-        public const string GUID    = "com.monnom.demeomods.progressive";
-        public const string NAME    = "DoriathMod";
-        public const string VERSION = "1.0.3";
+        public const string GUID    = "com.monnom.demeomods.pointprogressive";
+        public const string NAME    = "DoriathPointMod";
+        public const string VERSION = "1.0.0";
     }
 }

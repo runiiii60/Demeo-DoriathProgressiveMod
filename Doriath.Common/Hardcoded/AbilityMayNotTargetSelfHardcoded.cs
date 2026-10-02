@@ -1,38 +1,29 @@
 // ============================================================
-//  Doriath (PROGRESSIVE) — AbilityMayNotTargetSelfRule.cs
+//  Doriath — AbilityMayNotTargetSelfHardcoded.cs
 // ============================================================
 //
-// Fixes a native bug: IceExplosion (Warlock) deals damage to the Warlock
-// themself, even though they should be immune to their own attack.
+// Stops an area-of-effect ability from hurting the hero who cast it:
+// IceExplosion (Warlock) and TelekineticBurst (Barbarian) no longer damage
+// their own caster. Setting the ability's mayTargetSelf flag is not enough
+// on its own — that flag governs initial target selection, not the damage
+// resolution of an area effect, which hits everything in radius regardless.
+// The flag is still cleared (harmless, and it may matter for single-target
+// abilities that do consult it), while the actual guarantee comes from a
+// guard on damage resolution itself.
 //
-// Two mechanisms combined:
+// Parameters:
+//   Abilities  IceExplosion, TelekineticBurst  — abilities whose caster is immune to their own damage
 //
-// 1) mayTargetSelf = false on IceExplosion (native Ability field), applied
-//    once at game startup via
-//    AbilityFactory.LoadAbility(key).OnLoaded(...). Not sufficient on its
-//    own: according to the logs, this field only governs initial target
-//    selection, not damage resolution for an area ability (the explosion
-//    hits everything within its radius, regardless of this flag).
+// Patch: Postfix on HouseRules.Core.LifecycleDirector.GameStartup_InitializeGame_Postfix
+//        (mayTargetSelf mutation), plus a Prefix on every Damage.DealDamage
+//        overload (self-damage guard)
 //
-// 2) The real safeguard: a Prefix on Damage.DealDamage() that blocks the
-//    damage (returns 0, skips the original method) as soon as the target
-//    piece IS LITERALLY THE SAME INSTANCE as the attacking piece
-//    (ReferenceEquals) AND the attack comes from an ability in the
-//    `Abilities` list below. Filtered via ToString() of the Damage object
-//    (the exact internal field storing the AbilityKey was not identified
-//    by decompilation).
-//
-// Both mechanisms are kept together: the first remains harmless and may
-// have a real effect on other simple, non-AOE single-target abilities; the
-// second is the safety net that guarantees the result regardless of the
-// actual internal mechanism.
-//
-// Reliability: fully defensive (try/catch everywhere, log + skip if a
-// type/field/method is not found, never crashes). The Prefix ONLY blocks
-// the precise case "same piece on both sides + listed ability" — any other
-// damage resolution proceeds normally.
+// Fully defensive: every lookup is guarded, a missing type/field/method logs
+// a warning and skips. The guard only cancels the exact case "same piece on
+// both sides + listed ability"; all other damage resolution is untouched.
 
-namespace DoriathMod.Rules
+
+namespace DoriathMod.Hardcoded
 {
     using System;
     using System.Collections.Generic;
@@ -44,18 +35,21 @@ namespace DoriathMod.Rules
 
     public static class AbilityMayNotTargetSelfHardcoded
     {
-        // Shared by both mechanisms below (mayTargetSelf mutation AND damage
-        // blocking on DealDamage).
+        // Shared by both mechanisms below (mayTargetSelf mutation and the
+        // DealDamage guard).
         private static readonly List<AbilityKey> Abilities = new List<AbilityKey>
         {
             AbilityKey.IceExplosion,
+
+            // The guard is deliberately not bound to a hero: TelekineticBurst is
+            // currently a Barbarian-only card, but if it ever lands in another
+            // class's pool it is already covered.
+            AbilityKey.TelekineticBurst,
         };
 
-        // Sub-list of names (string) used for the quick filter on
-        // damage.ToString() (which contains "for ability <Name>") — avoids having
-        // to locate by reflection the exact field that stores the AbilityKey on
-        // the Damage object (never confirmed by decompilation; the same caution
-        // was applied for Zap/BarkArmor elsewhere).
+        // Name strings used for the quick filter on damage.ToString(), which
+        // contains "for ability <Name>". Avoids having to locate the field that
+        // stores the AbilityKey on the Damage object, which is not confirmed.
         private static readonly string[] AbilityNames = Abilities.Select(a => a.ToString()).ToArray();
 
         public static void Patch(Harmony harmony)
@@ -64,20 +58,20 @@ namespace DoriathMod.Rules
             PatchDealDamageSelfHitGuard(harmony);
         }
 
-        // Mechanism 1: mayTargetSelf mutation (kept, harmless).
+        // ── mayTargetSelf mutation ──────────────────────────────────────
         private static void PatchMayTargetSelfMutation(Harmony harmony)
         {
             var lifecycleDirectorType = AccessTools.TypeByName("HouseRules.Core.LifecycleDirector");
             if (lifecycleDirectorType == null)
             {
-                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] HouseRules.Core.LifecycleDirector introuvable — mutation mayTargetSelf ignoree.");
+                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] HouseRules.Core.LifecycleDirector not found — the mayTargetSelf change is skipped.");
                 return;
             }
 
             var hookMethod = AccessTools.Method(lifecycleDirectorType, "GameStartup_InitializeGame_Postfix");
             if (hookMethod == null)
             {
-                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] GameStartup_InitializeGame_Postfix introuvable — mutation mayTargetSelf ignoree.");
+                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] GameStartup_InitializeGame_Postfix not found — the mayTargetSelf change is skipped.");
                 return;
             }
 
@@ -86,7 +80,7 @@ namespace DoriathMod.Rules
                 postfix: new HarmonyMethod(typeof(AbilityMayNotTargetSelfHardcoded), nameof(ApplyAfterContextReady)));
 
             Plugin.Log?.LogInfo(
-                "[AbilityMayNotTargetSelfHardcoded] Mutation mayTargetSelf=false posee (mecanisme historique, conserve par securite) — capacites concernees : " +
+                "[AbilityMayNotTargetSelfHardcoded] mayTargetSelf=false set (older mechanism, kept as a safety net) — abilities affected: " +
                 string.Join(", ", Abilities));
         }
 
@@ -98,7 +92,7 @@ namespace DoriathMod.Rules
 
             if (abilityFactory == null)
             {
-                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] AbilityFactory introuvable au demarrage de la partie — mutation mayTargetSelf ignoree pour cette partie.");
+                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] AbilityFactory not found at game start — the mayTargetSelf change is skipped for this game.");
                 return;
             }
 
@@ -113,17 +107,14 @@ namespace DoriathMod.Rules
             }
         }
 
-        // Mechanism 2: safeguard on DealDamage (the real safety net).
+        // ── Self-damage guard on Damage.DealDamage ──────────────────────
         private static void PatchDealDamageSelfHitGuard(Harmony harmony)
         {
-            // Try the full name first (most likely namespace given the rest of the
-            // mod, cf. Boardgame.BoardEntities.Abilities.Ability/AbilityFactory
-            // already used here and in ProgressiveLevelRule.cs/PieceProgressLostRule.cs).
             var damageType = AccessTools.TypeByName("Boardgame.BoardEntities.Abilities.Damage");
 
-            // Safety net: if the exact namespace guessed above is wrong, look up by
-            // simple class name "Damage" across all loaded assemblies (avoids
-            // depending on decompilation to confirm the namespace).
+            // Fallback if the namespace guessed above is wrong: look up a class
+            // simply named "Damage" that declares DealDamage, in any loaded
+            // assembly.
             if (damageType == null)
             {
                 damageType = AppDomain.CurrentDomain.GetAssemblies()
@@ -139,7 +130,7 @@ namespace DoriathMod.Rules
 
             if (damageType == null)
             {
-                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] Type Damage introuvable (namespace exact + recherche globale) — garde-fou auto-degats desactive.");
+                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] Damage type not found (exact namespace and global search) — self-damage guard disabled.");
                 return;
             }
 
@@ -150,7 +141,7 @@ namespace DoriathMod.Rules
 
             if (methods.Count == 0)
             {
-                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] Aucune methode DealDamage trouvee — garde-fou auto-degats desactive.");
+                Plugin.Log?.LogWarning("[AbilityMayNotTargetSelfHardcoded] No DealDamage method found — self-damage guard disabled.");
                 return;
             }
 
@@ -163,17 +154,17 @@ namespace DoriathMod.Rules
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Log?.LogWarning($"[AbilityMayNotTargetSelfHardcoded] Echec du patch garde-fou sur une surcharge de DealDamage : {ex.Message}");
+                    Plugin.Log?.LogWarning($"[AbilityMayNotTargetSelfHardcoded] Failed to patch the guard on one DealDamage overload: {ex.Message}");
                 }
             }
 
             Plugin.Log?.LogInfo(
-                "[AbilityMayNotTargetSelfHardcoded] Garde-fou auto-degats pose sur Damage.DealDamage — bloque tout degat ou la cible EST la piece attaquante, pour : " +
+                "[AbilityMayNotTargetSelfHardcoded] Self-damage guard installed on Damage.DealDamage — blocks any damage where the target IS the attacking piece, for: " +
                 string.Join(", ", Abilities));
         }
 
-        // Extracts the underlying Piece object from an argument that can be either
-        // a Piece directly, or a Target (a struct with a "piece" field).
+        // Pulls the underlying Piece out of an argument that may be either a
+        // Piece directly or a Target (struct with a "piece" field).
         private static object ExtractPiece(object arg)
         {
             if (arg == null) return null;
@@ -200,7 +191,7 @@ namespace DoriathMod.Rules
 
                 if (damageArg == null) return true;
 
-                // Quick filter: is the ability involved part of the list?
+                // Quick filter: is the ability in play one of ours?
                 var damageText = damageArg.ToString() ?? "";
                 var matchedAbility = AbilityNames.FirstOrDefault(name => damageText.Contains(name));
                 if (matchedAbility == null) return true;
@@ -209,18 +200,20 @@ namespace DoriathMod.Rules
                 var attackerPiece = ExtractPiece(attackerArg);
                 if (targetPiece == null || attackerPiece == null) return true;
 
-                // Self-damage in the strict sense: literally the same piece instance.
+                // Self-damage in the strict sense: literally the same Piece
+                // instance. Piece is a reference type, so ReferenceEquals never
+                // matches two distinct pieces of the same kind.
                 if (!ReferenceEquals(targetPiece, attackerPiece)) return true;
 
                 Plugin.Log?.LogInfo(
-                    $"[AbilityMayNotTargetSelfHardcoded] Auto-degat bloque pour {matchedAbility} — la piece attaquante et la cible sont la meme instance, degats annules (etaient : {damageText}).");
+                    $"[AbilityMayNotTargetSelfHardcoded] Self-damage blocked for {matchedAbility} — attacking piece and target are the same instance, damage cancelled (was: {damageText}).");
 
                 __result = 0;
-                return false; // skip the original method: no damage applied, no side effects tied to the damage.
+                return false; // Skip the original: no damage and no damage-driven side effects.
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[AbilityMayNotTargetSelfHardcoded] Erreur dans le garde-fou auto-degats (degats laisses inchanges par securite) : {ex.Message}");
+                Plugin.Log?.LogWarning($"[AbilityMayNotTargetSelfHardcoded] Error in the self-damage guard (damage left unchanged to be safe): {ex.Message}");
                 return true;
             }
         }

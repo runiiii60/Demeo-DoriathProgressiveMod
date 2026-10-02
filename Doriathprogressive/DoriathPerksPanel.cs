@@ -36,7 +36,6 @@ namespace DoriathMod
             "Doriath is FULLY Progressive — enemies level up too. Their health and attack power scale with a DYNAMIC multiplier that follows the party's AVERAGE level, fully automatic across a run's 3 maps, increasing steadily and proportionally as the heroes level up.\n\n" +
             "Expect MORE enemies than the base game — both while exploring and Even more during boss fights, which now spawn extra waves alongside the boss itself.\n\n" +
             "The pace is also more relentless: zones fill up faster and difficulty spikes trigger earlier than in the base game, so encounters escalate before you've finished exploring.\n\n" +
-            "You only have 5 knockdowns for the WHOLE game — 3 from the start, plus 1 more at levels 3 and 7 — so be careful.\n\n" +
             "Each hero's attacks and abilities are tied to their own element: Fire for the Sorcerer, Ice for the Warlock, Lightning for the Bard, Poison for the Rogue, etc.\n\n\n" +
             "Level 1 - You start with 3 knockdowns before you're downed, and none of your abilities are free yet.\n" +
             "Level 2 - Your starting ability becomes free, and some heroes unlock an extra one.\n" +

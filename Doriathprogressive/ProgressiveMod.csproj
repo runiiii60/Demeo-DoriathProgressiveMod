@@ -1,0 +1,172 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>DoriathMod</AssemblyName>
+    <RootNamespace>DoriathMod</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>10</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+
+
+  <!-- ── Sources shared with the other Doriath mode ────────────────────
+       The 13 hardcoded patches and PerkTable are strictly identical between
+       Doriath (PROGRESSIVE) and Doriath (Point Progressive). They used to live
+       in two copies, which meant fixing every bug twice and occasionally
+       forgetting one. They now sit in a single folder, compiled by both
+       projects through a link: each mod still produces its own standalone DLL,
+       there is no extra library to deploy, but the file exists only once on disk.
+
+       What is NOT shared, and why: the Rule classes (HouseRules registers them
+       by Type, and two plugins cannot register the same one),
+       ProgressiveLevelRule and the level-loss rule (the trigger differs, mana
+       against points), DoriathPerksPanel (different text) and AdvancedStatsView
+       (it references each mod's own class name).
+
+       The path is relative: both mod folders and Doriath.Common must stay
+       siblings. -->
+  <ItemGroup>
+    <Compile Include="..\Doriath.Common\**\*.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <!-- ── Where Demeo lives ────────────────────────────────────────────
+       Every reference to the game, to BepInEx and to HouseRules starts here.
+
+       By default the Oculus install below is used. To build elsewhere (Steam,
+       another drive, another folder), set the DEMEO_PATH environment variable
+       to the install root — the folder containing BepInEx\ and Demeo_Data\ —
+       without touching this file:
+
+           setx DEMEO_PATH "D:\SteamLibrary\steamapps\common\Demeo"
+
+       then reopen Visual Studio, which only reads the environment at startup. -->
+  <PropertyGroup>
+    <DemeoBase Condition="'$(DEMEO_PATH)' != ''">$(DEMEO_PATH)</DemeoBase>
+    <DemeoBase Condition="'$(DemeoBase)' == ''">C:\Program Files\Oculus\Software\Software\resolution-games-demeo\demeorift_release</DemeoBase>
+    <BepInExDir>$(DemeoBase)\BepInEx</BepInExDir>
+    <DemeoManagedDir>$(DemeoBase)\Demeo_Data\Managed</DemeoManagedDir>
+  </PropertyGroup>
+
+  <!-- Without this check, a wrong path produces a dozen "reference not found"
+       errors that never say where the real problem is. Here there is one
+       message, and it says what to do. -->
+  <Target Name="CheckDemeoPath" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(DemeoManagedDir)\Assembly-CSharp.dll')"
+           Text="Demeo not found under &quot;$(DemeoBase)&quot;. Set the DEMEO_PATH environment variable to the root of your Demeo install (the folder containing BepInEx and Demeo_Data), then reopen Visual Studio." />
+    <Error Condition="!Exists('$(BepInExDir)\core\BepInEx.dll')"
+           Text="BepInEx not found under &quot;$(BepInExDir)&quot;. Install BepInEx in your Demeo folder before building." />
+  </Target>
+
+  <!-- ── BepInEx core ──────────────────────────────────────────────── -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExDir)\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExDir)\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Harmony">
+      <HintPath>$(BepInExDir)\core\BepInEx.Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ── HouseRules — uses the .BIE.dll files, which carry the right namespaces -->
+  <ItemGroup>
+    <Reference Include="HouseRules.Core.BIE">
+      <HintPath>$(BepInExDir)\plugins\HouseRules.Core.BIE.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="HouseRules.Core">
+      <HintPath>$(BepInExDir)\plugins\HouseRules.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="HouseRules.Essentials.BIE">
+      <HintPath>$(BepInExDir)\plugins\HouseRules.Essentials.BIE.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="HouseRules.Essentials">
+      <HintPath>$(BepInExDir)\plugins\HouseRules.Essentials.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="HouseRules.Configuration.BIE">
+      <HintPath>$(BepInExDir)\plugins\HouseRules.Configuration.BIE.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ── DemeoMods.Common.UI — extracted from the Costura resource embedded in
+       HouseRules.Configuration.BIE.dll (VrResourceTable / VrElementCreator, used by
+       DoriathPerksPanel.cs). Private=false: at runtime the Costura loader already
+       registered by HouseRules.Configuration.BIE.dll has to resolve this type through
+       the AppDomain's AssemblyResolve, so we do not embed it ourselves. -->
+  <ItemGroup>
+    <Reference Include="DemeoMods.Common.UI">
+      <HintPath>$(ProjectDir)Libs\DemeoMods.Common.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ── Demeo game DLLs ───────────────────────────────────────────── -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(DemeoManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(DemeoManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(DemeoManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(DemeoManagedDir)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ── Ruleset consistency check ─────────────────────────────────────
+       Runs tools/check_ruleset.py after every build: the JSON parses, no rule is
+       declared twice, decks are full enough, the map pool is coherent, the point
+       values are valid, dead config is reported. The build FAILS when the script
+       returns a blocking error, which is the point: a broken JSON must not ship
+       in a release.
+
+       When Python is not installed the check is simply skipped with a warning
+       and the build carries on. -->
+  <Target Name="CheckRuleset" AfterTargets="Build"
+          Condition="Exists('$(ProjectDir)tools\check_ruleset.py')">
+    <Exec Command="python --version" ContinueOnError="true"
+          StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="PythonProbe" />
+    </Exec>
+    <Warning Condition="'$(PythonProbe)' != '0'"
+             Text="Python not found — ruleset check skipped." />
+    <Exec Condition="'$(PythonProbe)' == '0'"
+          Command="python &quot;$(ProjectDir)tools\check_ruleset.py&quot; &quot;$(ProjectDir)Doriath (PROGRESSIVE).json&quot;" />
+  </Target>
+
+  <!-- ── Automatic DLL + JSON copy after build ─────────────────────── -->
+  <Target Name="DeployPlugin" AfterTargets="Build"
+          Condition="Exists('$(BepInExDir)\plugins')">
+    <Message Text="Deploying ProgressiveMod.dll to $(BepInExDir)\plugins" Importance="high"/>
+    <Copy
+      SourceFiles="$(OutputPath)$(AssemblyName).dll"
+      DestinationFolder="$(BepInExDir)\plugins"
+      SkipUnchangedFiles="false"
+    />
+    <Message Text="Deploying Doriath (PROGRESSIVE).json to $(DemeoBase)\HouseRules" Importance="high"/>
+    <Copy
+      SourceFiles="$(ProjectDir)Doriath (PROGRESSIVE).json"
+      DestinationFolder="$(DemeoBase)\HouseRules"
+      SkipUnchangedFiles="false"
+    />
+  </Target>
+
+</Project>

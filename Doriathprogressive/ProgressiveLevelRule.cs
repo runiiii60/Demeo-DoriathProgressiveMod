@@ -73,6 +73,11 @@ using UnityEngine;
             _context = context;
             _isActivated = true;
             _level0KnockdownBonusApplied.Clear();
+
+            // Fails loudly at activation if the perk table and MaxLevel disagree,
+            // rather than silently granting or reverting the wrong perk mid-run.
+            PerkTable.SelfCheck(MaxLevel);
+
             SuppressGrayAlienAdvancedStats();
             SpawnDoriathPerksPanel();
             PatchPanel1IntroCredit();
@@ -318,13 +323,13 @@ using UnityEngine;
                 _followPlayerMeleePlanMethod = planMethod;
                 _pieceIsBotMethod = isBotMethod;
 
-                Plugin.Log?.LogInfo("[BossFallbackBehaviour] FollowPlayerMeleeBehaviour fallback net now active for MotherCy/ElvenSummoner/BossTown (targeted bypass of the native IsBot gate).");
+                Plugin.Log?.LogInfo("[BossFallbackBehaviour] FollowPlayerMeleeBehaviour fallback net now active for MotherCy/ElvenSummoner/RootLord (targeted bypass of the native IsBot gate).");
             }
             catch (Exception ex)
             {
                 // Explicit logging rather than an empty catch, to diagnose a possible
                 // silent exception while installing the patch.
-                Plugin.Log?.LogWarning($"[BossFallbackBehaviour] Exception dans PatchFollowPlayerMeleeBehaviourGate — filet de repli inactif : {ex}");
+                Plugin.Log?.LogWarning($"[BossFallbackBehaviour] Exception in PatchFollowPlayerMeleeBehaviourGate — fallback net inactive: {ex}");
             }
         }
 
@@ -541,7 +546,7 @@ using UnityEngine;
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[DoriathLevelUpRule] Erreur bonus knockdown niveau 0: {ex.Message}");
+                Plugin.Log?.LogWarning($"[DoriathLevelUpRule] Error applying the level 0 knockdown bonus: {ex.Message}");
             }
         }
 
@@ -584,9 +589,9 @@ using UnityEngine;
 
             // Heal on level-up
             piece.effectSink.Heal(piece.GetMaxHealth());
-            Plugin.Log?.LogInfo($"[DoriathLevelUpRule] pieceId={pieceId} fully healed on level-up (Health -> {piece.GetMaxHealth()}).");
             piece.DisableEffectState(EffectStateType.Heal);
             piece.EnableEffectState(EffectStateType.Heal, 1);
+            Plugin.Log?.LogInfo($"[DoriathLevelUpRule] pieceId={pieceId} fully healed on level-up (Health -> {piece.GetMaxHealth()}).");
 
             if (nextLevel < MaxLevel)
             {
@@ -597,6 +602,11 @@ using UnityEngine;
                 string msg = GetLevelMessage(piece.boardPieceId, nextLevel);
                 GameUI.ShowCameraMessage(
                     $"<color=#F0F312>The party has</color> <color=#00FF00>LEVELED UP!</color> {msg}", 6);
+
+                // Stat perks (max HP, knockdowns, Magic/Strength) all come from one
+                // shared table, read in the same order on the way up and on the way
+                // down. See PerkTable.cs; DoriathXpLossRule calls PerkTable.Revert.
+                PerkTable.Apply(piece, nextLevel);
 
                 // ── LEVEL 1 ────────────────────────────────────────────
                 if (nextLevel == 2)
@@ -703,20 +713,15 @@ using UnityEngine;
                     }
                 }
                 // ── LEVEL 3: last-action crit buffs (handled by FreeThingsOnLastMoveAndCritRule) + 2nd KD ──
+                // The knockdown comes from PerkTable above. No card at this level.
                 else if (nextLevel == 3)
                 {
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedCounter,
-                        piece.GetStat(Stats.Type.DownedCounter) - 1);
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedTimer,
-                        piece.GetStat(Stats.Type.DownedTimer) + 1);
                 }
                 // ── LEVEL 4: +2 max HP (the "Gold on CRIT" bonus, formerly level 9, is
                 // merged in here: handled by the level >= 4 threshold in
                 // FreeThingsOnLastMoveAndCritRule, no extra code needed) ─────────────
                 else if (nextLevel == 4)
                 {
-                    piece.effectSink.TrySetStatMaxValue(Stats.Type.Health, piece.GetMaxHealth() + 2);
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.Health, piece.GetHealth() + 2);
                 }
                 // ── LEVEL 4: perk cards (formerly level 3) + CRIT buffs (handled by FreeThingsOnLastMoveAndCritRule) ──
                 else if (nextLevel == 5)
@@ -874,10 +879,6 @@ using UnityEngine;
                 // ── LEVEL 6: 1 KD (+2 HP removed: only level 3 grants +max HP) ──
                 else if (nextLevel == 7)
                 {
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedCounter,
-                        piece.GetStat(Stats.Type.DownedCounter) - 1);
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedTimer,
-                        piece.GetStat(Stats.Type.DownedTimer) + 1);
                     if (piece.boardPieceId == BoardPieceId.HeroBard)
                     {
                         // ScrollTsunami is a single-use starting card
@@ -949,24 +950,10 @@ using UnityEngine;
                 }
                 // ── LEVEL 7 (formerly level 8, swapped with level 8): stat bonus (+2 HP
                 // removed) + FreeHealOnCrit via FreeThingsOnLastMoveAndCritRule ──
+                // The stat bonus comes from PerkTable above (Magic for the Bard,
+                // Warlock and Sorcerer, Strength for the others). No card at this level.
                 else if (nextLevel == 8)
                 {
-                    if (piece.boardPieceId == BoardPieceId.HeroBard ||
-                        piece.boardPieceId == BoardPieceId.HeroWarlock ||
-                        piece.boardPieceId == BoardPieceId.HeroSorcerer)
-                    {
-                        piece.effectSink.TrySetStatBaseValue(Stats.Type.MagicBonus,
-                            piece.GetStat(Stats.Type.MagicBonus) + 1);
-                        piece.effectSink.TrySetStatMaxValue(Stats.Type.MagicBonus,
-                            piece.GetStatMax(Stats.Type.MagicBonus) + 1);
-                    }
-                    else
-                    {
-                        piece.effectSink.TrySetStatBaseValue(Stats.Type.Strength,
-                            piece.GetStat(Stats.Type.Strength) + 1);
-                        piece.effectSink.TrySetStatMaxValue(Stats.Type.Strength,
-                            piece.GetStatMax(Stats.Type.Strength) + 1);
-                    }
                 }
                 // ── LEVEL 8 (formerly level 7, swapped with level 7): ultimate card per hero ─────────────────
                 else if (nextLevel == 9)
@@ -1123,34 +1110,6 @@ using UnityEngine;
             SetReplenishCooldown(AbilityKey.MissileSwarm, 2);
             SetReplenishCooldown(AbilityKey.PlayerLeap, 2);
 
-            // ── Temporary diagnostic: CrossbowBolt (Hunter, AbilityKey.
-            // TurretDamageProjectile) and EnemyFreeze (Warlock, AbilityKey.EnemyFrostball)
-            // have been observed in-game with a ReplenishFrequency of 2 instead of the
-            // intended 1, even though the code forces RF=1 at grant time (level 2,
-            // replenishCooldown: 1) AND reasserts it here EVERY turn via
-            // SetReplenishCooldown (above).
-            // IL disassembly of Promise<T>.OnLoaded and
-            // Inventory.RestoreReplenishables (called every turn for every player
-            // piece): no timing/cache anomaly found that would explain a persistent
-            // RF=2. The "native"/default value of
-            // Ability.replenishCooldownAfterEffectsEnd for these two keys
-            // (ScriptableObject asset data, not an IL constant) remains unverifiable
-            // statically. This log only fires if Item.replenishCooldown is actually
-            // observed to differ from 1 in-game — remove once the bug is
-            // confirmed/fixed or confirmed to not exist.
-            for (var i = 0; i < piece.inventory.Items.Count; i++)
-            {
-                var diagItem = piece.inventory.Items[i];
-                if ((diagItem.AbilityKey == AbilityKey.TurretDamageProjectile
-                     || diagItem.AbilityKey == AbilityKey.EnemyFrostball)
-                    && diagItem.replenishCooldown != 1)
-                {
-                    Plugin.Log?.LogWarning(
-                        $"[ReplenishFrequencyDiag] ANOMALIE : piece={piece.boardPieceId} " +
-                        $"pieceId={piece.networkID} ability={diagItem.AbilityKey} " +
-                        $"Item.replenishCooldown={diagItem.replenishCooldown} (attendu 1)");
-                }
-            }
 
             return true;
         }

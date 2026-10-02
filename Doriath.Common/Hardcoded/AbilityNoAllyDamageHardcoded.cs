@@ -1,38 +1,25 @@
 // ============================================================
-//  Doriath (PROGRESSIVE) — AbilityNoAllyDamageRule.cs
+//  Doriath — AbilityNoAllyDamageHardcoded.cs
 // ============================================================
 //
-// DeathBeam (Sorcerer) must not deal damage to allies, just like
-// MinionCharge (which by its native design never hits an ally: a
-// direct-target ability aimed at a single enemy). No HouseRules JSON
-// parameter exposes this per ability (PartyDamageOverriddenRule, already
-// active in the JSON, only covers Electricity/Zap damage between players).
-// DeathBeam, on the other hand, is a beam that hits everything in its
-// path, allies included.
+// Makes DeathBeam harmless to allies. DeathBeam is a ray that natively hits
+// everything on its path, party members included, and neither the base game
+// nor HouseRules exposes a per-ability "no friendly fire" setting
+// (PartyDamageOverriddenRule only covers Electricity/Zap damage between
+// players). This cancels the damage when a listed ability is resolved from
+// one player piece onto another.
 //
-// Same technique as IceExplosion's self-damage safeguard (see
-// AbilityMayNotTargetSelfRule.cs): a Harmony Prefix on Damage.DealDamage()
-// (type looked up by full name, then by short name) that cancels the
-// result (returns 0, skips the original method) as soon as:
+// Parameters:
+//   Abilities  DeathBeam  — abilities that deal no player-to-player damage
 //
-// 1) the attacker AND the target are both "player" Pieces (IsPlayer(), the
-//    same method used natively in PartyDamageOverriddenRule),
+// Patch: Prefix on every Damage.DealDamage overload
 //
-// 2) AND the ability involved is part of the `Abilities` list below
-//    (filtered via ToString() of the Damage object, same method as the
-//    other rule — the exact internal field storing the AbilityKey on
-//    Damage was not confirmed by decompilation).
-//
-// Deliberately generic (a list, like AbilityMayNotTargetSelfHardcoded):
-// adding an ability here is enough to extend this behavior later, without
-// duplicating the mechanism.
-//
-// Reliability: fully defensive (try/catch everywhere, log + skip if a
-// type/field/method is not found, never crashes). Blocks ONLY the precise
-// case "listed ability + player on player" — everything else (damage to
-// monsters, damage from a monster to a player) proceeds normally.
+// Fully defensive: every lookup is guarded, a missing type/field/method logs
+// a warning and skips. Only "listed ability + player on player" is blocked;
+// damage to monsters and damage from monsters to players is untouched.
 
-namespace DoriathMod.Rules
+
+namespace DoriathMod.Hardcoded
 {
     using System;
     using System.Collections.Generic;
@@ -48,12 +35,17 @@ namespace DoriathMod.Rules
             AbilityKey.DeathBeam,
         };
 
+        // Name strings used for the quick filter on damage.ToString(), which
+        // contains "for ability <Name>". Avoids having to locate the field that
+        // stores the AbilityKey on the Damage object, which is not confirmed.
         private static readonly string[] AbilityNames = Abilities.Select(a => a.ToString()).ToArray();
 
         public static void Patch(Harmony harmony)
         {
             var damageType = AccessTools.TypeByName("Boardgame.BoardEntities.Abilities.Damage");
 
+            // Fallback if the namespace above is wrong: look up a class simply
+            // named "Damage" that declares DealDamage, in any loaded assembly.
             if (damageType == null)
             {
                 damageType = AppDomain.CurrentDomain.GetAssemblies()
@@ -93,7 +85,7 @@ namespace DoriathMod.Rules
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Log?.LogWarning($"[AbilityNoAllyDamageHardcoded] Failed to patch the guard onto a DealDamage overload: {ex.Message}");
+                    Plugin.Log?.LogWarning($"[AbilityNoAllyDamageHardcoded] Failed to patch the guard on one DealDamage overload: {ex.Message}");
                 }
             }
 
@@ -102,6 +94,8 @@ namespace DoriathMod.Rules
                 string.Join(", ", Abilities));
         }
 
+        // Pulls the underlying Piece out of an argument that may be either a
+        // Piece directly or a Target (struct with a "piece" field).
         private static object ExtractPiece(object arg)
         {
             if (arg == null) return null;
@@ -110,6 +104,7 @@ namespace DoriathMod.Rules
             return pieceField != null ? pieceField.GetValue(arg) : arg;
         }
 
+        // Same IsPlayer() the game's own party-damage rule relies on.
         private static bool IsPlayerPiece(object piece)
         {
             if (piece == null) return false;
@@ -154,7 +149,7 @@ namespace DoriathMod.Rules
             }
             catch (Exception ex)
             {
-                Plugin.Log?.LogWarning($"[AbilityNoAllyDamageHardcoded] Error in the ally-damage guard (damage left unchanged as a safety fallback): {ex.Message}");
+                Plugin.Log?.LogWarning($"[AbilityNoAllyDamageHardcoded] Error in the ally-damage guard (damage left unchanged to be safe): {ex.Message}");
                 return true;
             }
         }

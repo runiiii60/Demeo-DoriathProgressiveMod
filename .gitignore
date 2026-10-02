@@ -2,7 +2,7 @@
 #  Demeo mods — .gitignore
 # ============================================================
 
-# Archives de release — elles vivent dans les Releases GitHub, pas dans le repo
+# Release archives live in the GitHub Releases, not in the repo
 *.rar
 *.zip
 
@@ -13,14 +13,36 @@ obj/
 *.user
 .vs/
 
-# Fichiers personnels / de travail, sans rapport avec le code du mod —
-# exclus du repo (voir aussi claude.txt ci-dessous : NE JAMAIS versionner
-# ce fichier, il contient une clé API en clair).
-claude.txt
-Logout.txt
-conversation.txt
-recap.txt
-Untitled*.png
+# Stale build output left at a project root
+Doriathprogressive/ProgressiveMod.dll
 
-# Dossier de travail vide
+# Personal and working files, unrelated to the mods' code
+claude.txt
+claude outputs/
+Claude outputs/
+notes/
+action.md
+AGENTS.md
+CONTEXT.md
+AIDirector_Notes.md
+AIDirectorConfigRule_Explained.md
+TESTS.md
+recap.txt
+conversation.txt
+Logout.txt
+correction*.txt
+Untitled*.png
 New folder/
+
+# Dead sources, kept locally but not shipped
+*.cs.old
+Doriathprogressive/FreeThingsOnLastMoveAndCrit2Rule.cs
+Doriathprogressive/HouseRulesUiGameVrProgressivePerks.cs
+Doriathpointprogressive/PieceProgressLostRule.cs
+
+# Superseded by the root README and this file — safe to delete locally
+Doriathprogressive/README.md
+Doriathpointprogressive/README.md
+Doriath.Common/README.md
+Doriathprogressive/.gitignore
+Doriathpointprogressive/.gitignore

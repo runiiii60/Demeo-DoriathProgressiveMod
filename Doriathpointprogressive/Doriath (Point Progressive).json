@@ -1,19 +1,48 @@
 {
-  "Name": "<color=#FFA500>Doriath (PROGRESSIVE)</color>\n<color=#9370DB>by ruNIIII</color>",
-  "Description": "Heroes level up by filling the mana bar. Each level unlocks new abilities.",
+  "Name": "<color=#FFD700>Doriath (Point Progressive)</color>\n<color=#B39DDB>by ruNIIII</color>",
+  "Description": "Heroes level up by earning points through their actions. Each level unlocks new abilities.",
   "Enabled": true,
   "Rules": [
     {
-      "Rule": "DoriathLevelUpRule",
-      "Config": true
+      "Rule": "DoriathPointLevelUpRule",
+      "Config": {
+        "KillEnemy": 0.85,
+        "HurtEnemy": 1.33,
+        "HurtBoss": 1.85,
+        "KillBoss": 12.48,
+        "HurtSelf": -1,
+        "KillSelf": -2,
+        "BuffPlayer": 1,
+        "HurtPlayer": -1,
+        "KillPlayer": -2,
+        "RevivePlayer": 4,
+        "LootGold": 1.5,
+        "LootChest": 2.15,
+        "LootStand": 1.5,
+        "OpenDoor": 1,
+        "UnlockDoor": 1.2,
+        "UseFountain": 4,
+        "Keyholder": 0.53,
+        "CritBonus": 1.33,
+        "FloorClearBonus": 4,
+        "KillHealthDivisor": 10,
+        "PVPisOn": false,
+        "Points4Minions": 4,
+        "LevelPercentage": 4.25,
+        "BossPieces": {
+          "ElvenSummoner": 12.48,
+          "MotherCy": 15.15,
+          "RootLord": 17.82
+        }
+      }
     },
     {
-      "Rule": "DoriathXpLossRule",
+      "Rule": "DoriathPointLevelLossRule",
       "Config": true
     },
-    { "Rule": "EnemyPartyScaled", "Config": true },
+    { "Rule": "DoriathPointEnemyPartyScaled", "Config": true },
     {
-      "Rule": "AIDirectorConfig",
+      "Rule": "DoriathPointAIDirectorConfig",
       "Config": {
         "EasySpawnBudgetMultiplier": 1.26,
         "NormalSpawnBudgetMultiplier": 2.88,
@@ -37,11 +66,11 @@
       }
     },
     {
-      "Rule": "FreeThingsOnLastMoveAndCrit",
+      "Rule": "DoriathPointFreeThingsOnLastMoveAndCrit",
       "Config": ["HeroBard", "HeroGuardian", "HeroHunter", "HeroRogue", "HeroSorcerer", "HeroWarlock", "HeroBarbarian"]
     },
     {
-      "Rule": "FreeRevolutionsAbilityOnCrit",
+      "Rule": "DoriathPointFreeRevolutionsAbilityOnCrit",
       "Config": {
         "HeroHunter": "Corrupt",
         "HeroSorcerer": "DeathFlurry",
@@ -245,7 +274,7 @@
       "Rule": "CardChestAdditionOverridden",
       "Config": {
         "HeroBarbarian": ["EyeOfAvalon", "Heal", "Teleport", "Regroup", "Rejuvenation", "Petrify", "GodsFury", "GrapplingTotem", "PlayerLeap", "GrapplingSmash", "PVPHuntersMark", "GrapplingPush", "TelekineticBurst", "LuckPotion", "ExtraActionPotion", "Stealth", "ScrollElectricity", "Shockwave"],
-        "HeroGuardian": ["EyeOfAvalon", "Heal", "Teleport", "RevealPath", "Regroup", "Rejuvenation", "Grapple", "Flashbang", "PVPHuntersMark", "GodsFury", "BeaconOfHealing", "PiercingSpear", "TelekineticBurst", "ExtraActionPotion", "BeaconOfSmite", "Stealth", "WaterDive", "LuckPotion", "ProximityMine", "ScrollElectricity", "Whirlwind"],
+        "HeroGuardian": ["EyeOfAvalon", "Heal", "Teleport", "RevealPath", "Regroup", "Rejuvenation", "Grapple", "Flashbang", "PVPHuntersMark", "GodsFury", "BeaconOfHealing", "PiercingSpear", "ExtraActionPotion", "BeaconOfSmite", "Stealth", "WaterDive", "LuckPotion", "ProximityMine", "ScrollElectricity", "Whirlwind"],
         "HeroBard": ["EyeOfAvalon", "Heal", "Teleport", "Regroup", "Stealth", "Implode", "Rejuvenation", "MagicWall", "GodsFury", "ExtraActionPotion", "SongOfRecovery", "SongOfResilience", "BlockAbilities", "Petrify", "EnemyInvulnerability", "Tornado", "Deflect", "LuckPotion", "ScrollElectricity", "Portal", "WizardBossZap", "NotesOfConfusion", "ShatteringVoice"],
         "HeroHunter": ["EyeOfAvalon", "Heal", "Teleport", "Regroup", "Rejuvenation", "RevealPath", "Stealth", "GodsFury", "RatWhisperer", "CallCompanion", "PoisonedTip", "ExtraActionPotion", "MarkOfAvalon", "MonsterBait", "WaterDive", "LuckPotion", "ScrollTsunami", "ScrollElectricity", "SummonElemental", "Exterminate"],
         "HeroRogue": ["EyeOfAvalon", "Heal", "Teleport", "Regroup", "Rejuvenation", "Grapple", "GodsFury", "Blink", "ExtraActionPotion", "PoisonGasGrenade", "ScrollTsunami", "CursedDagger", "ProximityMine", "Flashbang", "Whirlwind", "LuckPotion", "DiseasedBite", "PVPHuntersMark", "Charge", "Exterminate", "VenomousSting"],
@@ -313,19 +342,19 @@
       "Rule": "MonsterDeckOverridden",
       "Config": {
         "EntranceDeckFloor1": {
-          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 16, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftSmall": 8, "ElvenPriest": 8, "TheUnheard": 4, "HealingBeacon": 8, "Sigataur": 4, "Bandit": 12, "Thug": 12, "Slimeling": 16, "SporeFungus": 12
+          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 16, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftSmall": 2, "ElvenPriest": 8, "TheUnheard": 1, "HealingBeacon": 8, "Sigataur": 4, "Bandit": 12, "Thug": 12, "Slimeling": 16, "SporeFungus": 12
         },
         "ExitDeckFloor1": {
-          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 16, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftSmall": 8, "ElvenPriest": 8, "TheUnheard": 4, "HealingBeacon": 8, "Cavetroll": 4, "Sigataur": 4, "Bandit": 12, "Thug": 12, "Slimeling": 16, "SporeFungus": 24
+          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 16, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftSmall": 2, "ElvenPriest": 8, "TheUnheard": 1, "HealingBeacon": 8, "Cavetroll": 4, "Sigataur": 4, "Bandit": 12, "Thug": 12, "Slimeling": 16, "SporeFungus": 24
         },
         "EntranceDeckFloor2": {
-          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 12, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftMedium": 8, "ElvenPriest": 8, "TheUnheard": 4, "HealingBeacon": 8, "ElvenQueen": 1, "Sigataur": 4
+          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 12, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftMedium": 1, "ElvenPriest": 8, "TheUnheard": 1, "HealingBeacon": 8, "ElvenQueen": 1, "Sigataur": 4
         },
         "ExitDeckFloor2": {
-          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 16, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftMedium": 8, "Cavetroll": 4, "ElvenPriest": 8, "TheUnheard": 4, "HealingBeacon": 8
+          "ElvenArcher": 8, "ElvenSkirmisher": 8, "JeweledScarab": 4, "GoblinFighter": 8, "ChestGoblin": 4, "ElvenMarauder": 8, "SmiteWard": 8, "TheUnseen": 8, "SilentSentinel": 4, "TheUnspoken": 8, "KillerBeeHive": 4, "ElvenSpearman": 16, "Mimic": 4, "ElvenMystic": 8, "ElvenCultist": 8, "SummoningRiftMedium": 2, "Cavetroll": 4, "ElvenPriest": 8, "TheUnheard": 2, "HealingBeacon": 8
         },
         "BossDeck": {
-          "ElvenPriest": 10, "ElvenMarauder": 10, "HealingBeacon": 15, "TheUnheard": 17, "TheUnseen": 17, "ElvenArcher": 15, "TheUnspoken": 15, "ElvenMystic": 10, "DruidArcher": 10, "Sigataur": 12, "Gorgon": 6, "GiantSpider": 12, "Cavetroll": 10, "ElvenSpearman": 0, "GoblinFighter": 0, "SummoningRiftBig": 6, "SummoningRiftSmall": 6, "SummoningRiftMedium": 6, "KillerBeeHive": 8, "RatKing": 1
+          "ElvenPriest": 10, "ElvenMarauder": 10, "HealingBeacon": 15, "TheUnheard": 2, "TheUnseen": 17, "ElvenArcher": 15, "TheUnspoken": 15, "ElvenMystic": 10, "DruidArcher": 10, "Sigataur": 12, "Gorgon": 6, "GiantSpider": 12, "Cavetroll": 10, "ElvenSpearman": 0, "GoblinFighter": 0, "SummoningRiftBig": 2, "SummoningRiftSmall": 2, "SummoningRiftMedium": 2, "KillerBeeHive": 8, "RatKing": 1
         },
         "KeyHolderFloor1": "ElvenSummoner",
         "KeyHolderFloor2": "MotherCy",
@@ -343,7 +372,6 @@
         "HeroWarlock": ["Petrified", "Stunned", "Frozen", "Netted"],
         "HeroBarbarian": ["Tangled", "Stunned", "Frozen", "Netted"],
         "WarlockMinion": ["Diseased", "Tangled", "Frozen", "Wet", "Corruption", "Panic", "CorruptedRage", "Stunned"],
-        "Verochka": ["Diseased", "Tangled"],
         "BigBoiMutant": ["Petrified", "Stunned", "Panic"],
         "MotherCy": ["Petrified", "Diseased", "Venom", "Netted", "AbilityBlocked", "Stunned", "Panic", "Frozen", "MarkOfAvalon", "Blinded", "Disoriented", "Confused"],
         "Wyvern": ["Petrified", "Stunned", "Frozen", "Panic", "Disoriented", "Confused"],
@@ -410,7 +438,6 @@
         "DruidArcher": ["Patrol", "AttackAndRetreat", "RangedAttackHighPrio"],
         "RootLord": ["RootLordBehaviour", "RangedSpellCaster", "Patrol", "AttackPlayer"],
         "JeweledScarab": ["AttackAndRetreat", "SpawnPiece"],
-        "Verochka": ["Patrol", "AttackPlayer"],
         "MotherCy": ["MotherCyBossBehaviour", "RangedSpellCaster", "AttackPlayer"],
         "BigBoiMutant": ["Patrol", "RangedSpellCaster", "AttackPlayer"]
       }
@@ -514,14 +541,14 @@
     {
       "Rule": "MyRandomLevelSequenceOverridden",
       "Config": [
+        "ElvenFloor07",
+        "ForestFloor02",
         "ForestFloor06",
         "ForestFloor07",
-        "ForestFloor08",
-        "ElvenFloor07",
-        "DesertFloor03",
-        "DesertFloor08",
         "DesertFloor05",
+        "DesertFloor02",
         "TownsFloor02",
+        "TownsFloor04",
         "TownsFloor06",
         "TownsFloor07"
       ]

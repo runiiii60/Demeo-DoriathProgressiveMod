@@ -1,11 +1,17 @@
 // ============================================================
-//  Doriath (PROGRESSIVE) — PieceProgressLostRule.cs
+//  Doriath (Point Progressive) — LevelLossRule.cs
 // ============================================================
 //
-// Makes a hero lose a level of experience when revived via
-// MotherTracker.TrackRevive, reversing the perks gained at the lost level.
+// Level loss on revive. Based on PieceProgressLostRule by TheGrayAlien.
 //
-// Based on PieceProgressLostRule by TheGrayAlien.
+// A hero picked up by another player's Revive ability loses one level, and
+// the perks granted by that level are taken back. Being picked up by magic,
+// a potion or a fountain does not trigger this rule.
+//
+// Stat perks are reverted from PerkTable, the same table used on the way up
+// (see PerkTable.cs), so a level lost gives back exactly what it gave.
+// Cards are reverted here, level by level, and the point counter is reset so
+// the hero restarts the previous level from scratch.
 
 namespace DoriathMod.Rules
 {
@@ -18,14 +24,14 @@ namespace DoriathMod.Rules
     using HouseRules.Core;
     using HouseRules.Core.Types;
 
-    public sealed class DoriathXpLossRule : Rule, IConfigWritable<bool>, IPatchable, IMultiplayerSafe
+    public sealed class DoriathPointLevelLossRule : Rule, IConfigWritable<bool>, IPatchable, IMultiplayerSafe
     {
         public override string Description => "Heroes lose a level if revived without using magic or a potion";
 
         private static bool _isActivated;
 
-        public DoriathXpLossRule() { }
-        public DoriathXpLossRule(bool value) { }
+        public DoriathPointLevelLossRule() { }
+        public DoriathPointLevelLossRule(bool value) { }
 
         public bool GetConfigObject() => true;
 
@@ -37,7 +43,7 @@ namespace DoriathMod.Rules
             harmony.Patch(
                 original: AccessTools.Method(typeof(MotherTracker), "TrackRevive"),
                 prefix: new HarmonyMethod(
-                    typeof(DoriathXpLossRule),
+                    typeof(DoriathPointLevelLossRule),
                     nameof(MotherTracker_TrackRevive_Prefix)));
         }
 
@@ -45,7 +51,7 @@ namespace DoriathMod.Rules
         {
             if (!_isActivated) return;
 
-            // Only lose a level if revived by another player (Revive ability)
+            // A level is lost only when another player uses the Revive ability.
             if (sourceAbility != AbilityKey.Revive) return;
 
             int level = revivedPiece.GetStatMax(Stats.Type.CritChance);
@@ -53,15 +59,23 @@ namespace DoriathMod.Rules
 
             int newLevel = level - 1;
 
-            // Decrement the level
+            // Decrement the level.
             revivedPiece.effectSink.TrySetStatMaxValue(Stats.Type.CritChance, newLevel);
             revivedPiece.effectSink.SetStatusEffectDuration(EffectStateType.Flying, newLevel);
             revivedPiece.effectSink.AddStatusEffect(EffectStateType.ConfusedPermanentVisualOnly, -1);
 
-            // Reverse the lost level's perk
+            // Take back the cards granted by the lost level.
             ReverseLevelPerk(revivedPiece, level);
 
-            // In-game message
+            // Stat perks: same table as on the way up, read in reverse.
+            // See PerkTable.cs.
+            PerkTable.Revert(revivedPiece, level);
+
+            // The point counter goes back to 0: the hero restarts the previous
+            // level from scratch rather than keeping the lost level's points.
+            DoriathPointLevelUpRule.ResetPoints(revivedPiece);
+
+            // In-game message.
             string heroName = GetHeroName(revivedPiece.boardPieceId);
             GameUI.ShowCameraMessage(
                 $"<color=#F0F312>{heroName}</color> <color=#FF1C06>LOST a level!</color> Now level {newLevel}", 6);
@@ -74,77 +88,50 @@ namespace DoriathMod.Rules
             switch (lostLevel)
             {
                 case 2:
-                    // Lose the level 1 cards
+                    // Loses the level 1 cards.
                     ReverseLevelCards(piece, id, 2);
                     break;
 
                 case 3:
-                    // Lose the 2nd knockdown + the CRIT buff from level 3
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedCounter,
-                        piece.GetStat(Stats.Type.DownedCounter) + 1);
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedTimer,
-                        piece.GetStat(Stats.Type.DownedTimer) - 1);
+                    // The knockdown is reverted by PerkTable. The on-CRIT buff is driven
+                    // by a threshold (level >= 3) and switches itself off.
                     break;
 
                 case 4:
-                    // Lose the +2 max HP from level 4 (the "Gold on CRIT" merged in here, formerly
-                    // level 9, needs no explicit removal: it is gated by the level >= 4 threshold and
-                    // deactivates automatically as soon as CritChance drops below 4)
-                    piece.effectSink.TrySetStatMaxValue(Stats.Type.Health,
-                        piece.GetMaxHealth() - 2);
+                    // The +2 max HP is reverted by PerkTable. The rest of level 4 (the
+                    // "Gold on CRIT" effect merged into this level) needs no explicit
+                    // removal: it is gated on level >= 4 and switches itself off as soon
+                    // as CritChance drops back below 4.
                     break;
 
                 case 5:
-                    // Lose the level 4 cards
+                    // Loses the level 4 cards.
                     ReverseLevelCards(piece, id, 5);
                     break;
 
                 case 6:
-                    // Lose the level 5 cards (the +1 MoveRange was already removed, nothing left to undo)
+                    // Loses the level 5 cards. Level 5 grants no stat bonus.
                     ReverseLevelCards(piece, id, 6);
                     break;
 
                 case 7:
-                    // Lose the +1 knockdown + the +2 max HP added at this level + the level 6 cards
-                    piece.effectSink.TrySetStatMaxValue(Stats.Type.Health,
-                        piece.GetMaxHealth() - 2);
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedCounter,
-                        piece.GetStat(Stats.Type.DownedCounter) + 1);
-                    piece.effectSink.TrySetStatBaseValue(Stats.Type.DownedTimer,
-                        piece.GetStat(Stats.Type.DownedTimer) - 1);
+                    // The knockdown is reverted by PerkTable. Level 7 grants no max HP,
+                    // so none is taken back here.
                     ReverseLevelCards(piece, id, 7);
                     break;
 
                 case 8:
-                    // Level 7 (formerly level 8, swapped with level 8): lose +1 Magic/Strength
-                    // + the +2 max HP added at this level
-                    piece.effectSink.TrySetStatMaxValue(Stats.Type.Health,
-                        piece.GetMaxHealth() - 2);
-                    if (id == BoardPieceId.HeroBard ||
-                        id == BoardPieceId.HeroWarlock ||
-                        id == BoardPieceId.HeroSorcerer)
-                    {
-                        piece.effectSink.TrySetStatBaseValue(Stats.Type.MagicBonus,
-                            piece.GetStat(Stats.Type.MagicBonus) - 1);
-                        piece.effectSink.TrySetStatMaxValue(Stats.Type.MagicBonus,
-                            piece.GetStatMax(Stats.Type.MagicBonus) - 1);
-                    }
-                    else
-                    {
-                        piece.effectSink.TrySetStatBaseValue(Stats.Type.Strength,
-                            piece.GetStat(Stats.Type.Strength) - 1);
-                        piece.effectSink.TrySetStatMaxValue(Stats.Type.Strength,
-                            piece.GetStatMax(Stats.Type.Strength) - 1);
-                    }
+                    // The +1 Magic/Strength is reverted by PerkTable. Level 8 grants no
+                    // max HP, so none is taken back here.
                     break;
 
                 case 9:
-                    // Level 8 (formerly level 7, swapped with level 7): lose the ultimate cards
+                    // Loses the ultimate cards.
                     ReverseLevelCards(piece, id, 9);
                     break;
 
                 case 10:
-                    // Level 9 (formerly level 9, swapped with level 10): FreeRevolutionsAbilityOnCrit (not reversible)
+                    // FreeRevolutionsAbilityOnCrit: threshold-driven, nothing to revert.
                     break;
             }
         }
@@ -154,9 +141,10 @@ namespace DoriathMod.Rules
             switch (lostLevel)
             {
                 case 2:
-                    // Level 1: Hunter->TurretDamageProjectile (added), Rogue->DiseasedBite (added)
-                    // Warlock->EnemyFrostball added, MinionCharge removed -> restore MinionCharge
-                    // Sorcerer->DeathFlurry (added, RF=1, normal cost — replaces DeathBeam)
+                    // Level 1: Hunter -> TurretDamageProjectile (added),
+                    // Rogue -> DiseasedBite (added), Warlock -> EnemyFrostball added and
+                    // MinionCharge removed, so MinionCharge is restored here,
+                    // Sorcerer -> DeathFlurry (added, replenish factor 1, normal cost).
                     switch (id)
                     {
                         case BoardPieceId.HeroHunter:
@@ -174,20 +162,23 @@ namespace DoriathMod.Rules
                             piece.AddGold(0);
                             break;
                         case BoardPieceId.HeroSorcerer:
-                            // Remove DeathFlurry (given at level 1, together with a free EnemyFireball;
-                            // replaces DeathBeam)
+                            // Removes DeathFlurry, granted at level 1 alongside the free
+                            // EnemyFireball.
                             RemoveInventoryCard(piece, AbilityKey.DeathFlurry);
                             break;
                     }
                     break;
 
                 case 5:
-                    // Level 4: Guardian->PiercingSpear (revert replenish), Sorcerer->Fireball (revert replenish).
-                    // Bard (Zap), Hunter (TurretDamageProjectile), Rogue (DiseasedBite), Warlock (EnemyFrostball)
-                    // and Barbarian (SpawnRandomLamp) have nothing to undo here: their "free" access at this
-                    // level is handled by a threshold (level >= 5) re-evaluated continuously in SetCost/
-                    // Inventory_RestoreReplenishables_Prefix, which automatically becomes payable again as soon
-                    // as CritChance drops below 5 - no explicit removal code needed.
+                    // Level 4: Guardian -> PiercingSpear (revert replenish),
+                    // Sorcerer -> Fireball (revert replenish).
+                    //
+                    // Bard (Zap), Hunter (TurretDamageProjectile), Rogue (DiseasedBite),
+                    // Warlock (EnemyFrostball) and Barbarian (SpawnRandomLamp) have
+                    // nothing to revert here: their card becoming free at this level is
+                    // gated on level >= 5, re-evaluated continuously in SetCost and
+                    // Inventory_RestoreReplenishables_Prefix, so it costs again as soon
+                    // as CritChance drops back below 5.
                     switch (id)
                     {
                         case BoardPieceId.HeroGuardian:
@@ -200,12 +191,10 @@ namespace DoriathMod.Rules
                     break;
 
                 case 6:
-                    // Level 5: Bard->Electricity (added), Guardian->Whirlwind (revert),
-                    // Hunter->PoisonedTip (added), Rogue->PoisonGasGrenade (revert),
-                    // Sorcerer->FretsOfFire (added, swapped with level 6 for the Sorcerer
-                    // only), Warlock->Freeze (added, swapped with level 6 for the
-                    // Warlock only), Barbarian->GrapplingSmash (revert, swapped with
-                    // level 6 for the Barbarian only)
+                    // Level 5: Bard -> Electricity (added), Guardian -> Whirlwind (revert),
+                    // Hunter -> PoisonedTip (added), Rogue -> PoisonGasGrenade (revert),
+                    // Sorcerer -> FretsOfFire (added), Warlock -> Freeze (added),
+                    // Barbarian -> GrapplingSmash (revert).
                     switch (id)
                     {
                         case BoardPieceId.HeroBard:
@@ -233,14 +222,10 @@ namespace DoriathMod.Rules
                     break;
 
                 case 7:
-                    // Level 6: Bard->ScrollTsunami (revert), Guardian->BeaconOfHealing (revert,
-                    // swapped with level 8 for the Guardian only),
-                    // Hunter->MarkOfAvalon (added, swapped with level 8 for the Hunter
-                    // only), Rogue->ProximityMine (added; replaces Flashbang),
-                    // Sorcerer->MagicShield (added, swapped with level 5 for the Sorcerer
-                    // only), Warlock->IceExplosion (added, swapped with level 5 for
-                    // the Warlock only), Barbarian->Implosion (revert, swapped with
-                    // level 5 for the Barbarian only)
+                    // Level 6: Bard -> ScrollTsunami (revert),
+                    // Guardian -> BeaconOfHealing (revert), Hunter -> MarkOfAvalon (added),
+                    // Rogue -> ProximityMine (added), Sorcerer -> MagicShield (added),
+                    // Warlock -> IceExplosion (added), Barbarian -> Implosion (revert).
                     switch (id)
                     {
                         case BoardPieceId.HeroBard:
@@ -253,7 +238,6 @@ namespace DoriathMod.Rules
                             RemoveInventoryCard(piece, AbilityKey.MarkOfAvalon);
                             break;
                         case BoardPieceId.HeroRogue:
-                            // Replaces Flashbang with ProximityMine
                             RemoveInventoryCard(piece, AbilityKey.ProximityMine);
                             break;
                         case BoardPieceId.HeroSorcerer:
@@ -268,15 +252,14 @@ namespace DoriathMod.Rules
                     }
                     break;
                 case 9:
-                    // Level 8 (formerly level 7, swapped with level 7): Bard->Tornado (revert),
-                    // Guardian->BeaconOfSmite (revert, swapped with level 6 for the Guardian
-                    // only), Hunter->Exterminate (added, swapped with level 6 for the
-                    // Hunter only), Rogue->CursedDagger (revert, swapped with level 6
-                    // for the Rogue only), Sorcerer->ExplosiveOrb (added),
-                    // Warlock->MissileSwarm (revert — MissileSwarm is an RF=0 starting card,
-                    // not a newly granted one; RemoveInventoryCard() used to delete it entirely
-                    // instead of just stripping its replenishable flag),
-                    // Barbarian->PlayerLeap (added)
+                    // Level 8: Bard -> Tornado (revert), Guardian -> BeaconOfSmite (revert),
+                    // Hunter -> Exterminate (added), Rogue -> CursedDagger (revert),
+                    // Sorcerer -> ExplosiveOrb (added), Warlock -> MissileSwarm (revert),
+                    // Barbarian -> PlayerLeap (added).
+                    //
+                    // MissileSwarm is reverted, not removed: it is a starting card with a
+                    // replenish factor of 0, so level 8 only makes it replenishable.
+                    // Removing it outright would delete the card from the hero's hand.
                     switch (id)
                     {
                         case BoardPieceId.HeroBard:
@@ -302,10 +285,9 @@ namespace DoriathMod.Rules
                             break;
                     }
                     break;
-                // Note: the old "case 10" here (level 9, FreeRevolutionsAbilityOnCrit) was dead
-                // code — ReverseLevelPerk never calls ReverseLevelCards with lostLevel
-                // 10 (that tier adds/removes no cards). Removed during the renumbering
-                // following the merge of "Gold on CRIT" into level 4.
+
+                // There is no case 10: level 10 adds and removes no card, so
+                // ReverseLevelPerk never calls this method with lostLevel 10.
             }
         }
 
