@@ -102,7 +102,7 @@ namespace DoriathMod.Hardcoded
                 abilityFactory.LoadAbility(abilityKey).OnLoaded(ability =>
                 {
                     ability.mayTargetSelf = false;
-                    Plugin.Log?.LogInfo($"[AbilityMayNotTargetSelfHardcoded] mayTargetSelf=false applique a {abilityKey}.");
+                    Plugin.Log?.LogInfo($"[AbilityMayNotTargetSelfHardcoded] mayTargetSelf=false applied to {abilityKey}.");
                 });
             }
         }
