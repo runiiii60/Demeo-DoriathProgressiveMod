@@ -36,7 +36,7 @@ namespace DoriathMod.Hardcoded
                 var method = AccessTools.Method(type, name);
                 if (method == null)
                 {
-                    Plugin.Log?.LogWarning($"[Floor2SpawnBudgetReducedHardcoded] {name} introuvable — non patchee.");
+                    Plugin.Log?.LogWarning($"[Floor2SpawnBudgetReducedHardcoded] {name} not found — not patched.");
                     continue;
                 }
 
