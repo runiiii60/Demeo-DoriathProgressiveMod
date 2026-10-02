@@ -43,7 +43,7 @@ Prerequisites: [BepInEx](https://github.com/BepInEx/BepInEx) and [HouseRules](ht
 
 1. Download the latest release.
 2. Copy the `.dll` into the game's `BepInEx/plugins/` folder — `DoriathMod.dll` for PROGRESSIVE, `DoriathPointMod.dll` for Point Progressive.
-3. Copy the matching `.json` into the game's `HouseRules/` folder — `Doriath (PROGRESSIVE).json` or `Doriath (Point Progressive).json`.
+3. Copy the matching `.json` into the game's `HouseRules/` folder — `Doriath Progressive.json` or `Doriath PointProgressive.json`.
 4. Launch Demeo and pick the ruleset from the HouseRules menu.
 
 ## Building
@@ -81,7 +81,7 @@ First release of the points variant.
 - **Telekinetic Burst no longer damages the Barbarian who casts it**, the same way Ice Explosion spares the Warlock. The card is Barbarian-only and has been removed from every other hero's pool.
 - **The end-of-level log recap no longer counts gold piles, chests, doors and portals as enemies** — only creatures are counted, on both the spawn and the kill side.
 
-### Balance changes (`Doriath (PROGRESSIVE).json`)
+### Balance changes (`Doriath Progressive.json`)
 - **Levelling slowed down**: `CardEnergyFromAttackMultiplied` 0.3 → 0.25 (`CardEnergyFromRecyclingMultiplied` stays at 0.3). Measured in play, the party was reaching level 9 of 10 by the exit of floor 2 — a whole floor before the end of the run.
 
 ### Tooling and build
@@ -99,7 +99,7 @@ First release of the points variant.
 - **A failing hardcoded patch no longer disables the others.**
 
 ### Balance changes
-- None. This release contains no gameplay or `Doriath (PROGRESSIVE).json` change.
+- None. This release contains no gameplay or `Doriath Progressive.json` change.
 
 - Plugin version bumped to 1.0.3.
 
@@ -109,7 +109,7 @@ First release of the points variant.
 - **No more game freeze when a lamp explodes in gas**: it only concerns telemetry (metrics submission), with no effect on gameplay.
 - **`ElvenFloor09` removed from the random level pool.**
 
-### Balance changes (`Doriath (PROGRESSIVE).json` and code)
+### Balance changes (`Doriath Progressive.json` and code)
 - **Floor 2: 15% fewer enemies.** The boss floor and the boss fight itself are unchanged.
 - **Boss floor budget**: adjusted.
 - **Smaller `BossDeck`**: cut by half.
@@ -126,7 +126,7 @@ First release of the points variant.
 - **The Bard's Zap now damages `HealingBeacon`, `SmiteWard` and `SporeFungus`.**
 - **Level-up now stands a knocked-down hero back up.**
 
-### Balance changes (`Doriath (PROGRESSIVE).json` and code)
+### Balance changes (`Doriath Progressive.json` and code)
 - **ElvenSummoner**: 2 AP, move range 4, `Banish` and `EmergencyTeleport` removed.
 - **MotherCy** removed from the floor 2 decks (only appears as the floor 2 KeyHolder).
 - **Sorcerer**: no longer immune to `StunSelf`.

@@ -59,7 +59,7 @@ using UnityEngine;
         //
         // "Doriath (Point Progressive)" is shown in dark purple (distinct from the
         // orange used by the button/RoomFinder, which reads the JSON "Name" field
-        // directly — see Doriath (Point Progressive).json). "by ruNIIII" is dark gray
+        // directly — see Doriath PointProgressive.json). "by ruNIIII" is dark gray
         // and bold, to visually match the "Playing ... ruleset!" style (black).
         //
         // The button/RoomFinder, which reads the JSON "Name" field directly, is
@@ -733,7 +733,7 @@ using UnityEngine;
                         // ── Grant DeathFlurry to the Sorcerer (RF=1, normal cost 1 AP, not free) ──
                         // Replaces DeathBeam. DeathBeam was only granted here to feed the
                         // level 9 perk (FreeRevolutionsAbilityOnCrit, see
-                        // Doriath (Point Progressive).json) — both are therefore changed together so
+                        // Doriath PointProgressive.json) — both are therefore changed together so
                         // the Sorcerer actually holds the card that perk makes free on CRIT.
                         bool hasDeathFlurry = false;
                         for (var i = 0; i < piece.inventory.Items.Count; i++)

@@ -18,7 +18,7 @@
 //
 // IMPORTANT: EnemyAttackScaled and EnemyHealthScaled must stay DISABLED in
 // the ruleset JSON (same hook point would otherwise cause double scaling).
-// See Doriath (Point Progressive).json.
+// See Doriath PointProgressive.json.
 
 namespace DoriathMod.Rules
 {

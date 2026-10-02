@@ -149,7 +149,7 @@
     <Warning Condition="'$(PythonProbe)' != '0'"
              Text="Python not found — ruleset check skipped." />
     <Exec Condition="'$(PythonProbe)' == '0'"
-          Command="python &quot;$(ProjectDir)tools\check_ruleset.py&quot; &quot;$(ProjectDir)Doriath (PROGRESSIVE).json&quot;" />
+          Command="python &quot;$(ProjectDir)tools\check_ruleset.py&quot; &quot;$(ProjectDir)Doriath Progressive.json&quot;" />
   </Target>
 
   <!-- ── Automatic DLL + JSON copy after build ─────────────────────── -->
@@ -161,9 +161,9 @@
       DestinationFolder="$(BepInExDir)\plugins"
       SkipUnchangedFiles="false"
     />
-    <Message Text="Deploying Doriath (PROGRESSIVE).json to $(DemeoBase)\HouseRules" Importance="high"/>
+    <Message Text="Deploying Doriath Progressive.json to $(DemeoBase)\HouseRules" Importance="high"/>
     <Copy
-      SourceFiles="$(ProjectDir)Doriath (PROGRESSIVE).json"
+      SourceFiles="$(ProjectDir)Doriath Progressive.json"
       DestinationFolder="$(DemeoBase)\HouseRules"
       SkipUnchangedFiles="false"
     />

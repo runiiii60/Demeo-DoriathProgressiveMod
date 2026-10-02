@@ -3,7 +3,7 @@
 Consistency check for a Doriath HouseRules ruleset.
 
 Usage:
-    python tools/check_ruleset.py "Doriath (PROGRESSIVE).json"
+    python tools/check_ruleset.py "Doriath PointProgressive.json"
     python tools/check_ruleset.py            # every .json in the script's parent folder
 
 Output: a list of ERRORS (blocking) and WARNINGS (worth a look).
