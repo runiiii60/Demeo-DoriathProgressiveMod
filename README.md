@@ -37,6 +37,19 @@ Key points:
 
 ---
 
+## Documentation
+
+Spawn system reference, for anyone tuning enemy counts or reusing the
+`AIDirectorConfig` rule in their own ruleset or mod:
+
+- [AIDirectorConfig_Reference_EN.md](AIDirectorConfig_Reference_EN.md) — the 19
+  AI Director parameters: native game value, Doriath value, and what each one
+  actually changes. Includes ready-to-copy JSON and how to depend on
+  `DoriathMod.dll`. ([version française](AIDirectorConfig_Reference.md))
+- [SpawnLevers_Reference_EN.md](SpawnLevers_Reference_EN.md) — the levers outside
+  the JSON (boss budget ×3, floor 2 −15 %) and how `MonsterDeckOverridden` really
+  works. ([version française](SpawnLevers_Reference.md))
+
 ## Installation
 
 Prerequisites: [BepInEx](https://github.com/BepInEx/BepInEx) and [HouseRules](https://github.com/orendain/demeo-mods) already installed on your copy of Demeo.
