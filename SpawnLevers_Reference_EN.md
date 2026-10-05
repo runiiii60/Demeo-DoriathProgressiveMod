@@ -1,7 +1,7 @@
 # Additional spawn levers — reference
 
 Documentation for Doriath's 4 spawn levers that do **not** go through
-`AIDirectorConfig` (see `AIDirectorConfig_Reference.md` for that one):
+`AIDirectorConfig` (see [`AIDirectorConfig_Reference_EN.md`](AIDirectorConfig_Reference_EN.md) for that one):
 
 | Lever | Where | Type |
 |---|---|---|

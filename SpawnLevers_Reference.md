@@ -1,7 +1,7 @@
 # Leviers de spawn supplémentaires — référence
 
 Documentation des 4 leviers de spawn de Doriath qui **ne passent pas** par
-`AIDirectorConfig` (voir `AIDirectorConfig_Reference.md` pour celui-là) :
+`AIDirectorConfig` (voir [`AIDirectorConfig_Reference.md`](AIDirectorConfig_Reference.md) pour celui-là) :
 
 | Levier | Où | Type |
 |---|---|---|
