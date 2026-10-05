@@ -29,6 +29,11 @@ using UnityEngine;
 
         private static Context? _context;
         private static bool _isActivated;
+
+        // Read by AdvancedStatsView: its HUD patches are installed at plugin
+        // load, so they fire in every ruleset and must gate on this.
+        internal static bool IsActivated => _isActivated;
+
         private const int MaxLevel = 10; // formerly 11: the "Gold on CRIT" level was merged into level 4, 9 levels total
         private static readonly List<MethodInfo> _suppressedMethods = new();
         private static GameObject? _perksPanel;

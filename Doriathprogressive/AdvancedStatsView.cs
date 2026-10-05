@@ -20,6 +20,11 @@ namespace DoriathMod
 
         internal static void BuildAndShow(Piece piece, GrabbedPieceHudInstantiator data, IPieceNameController nameController)
         {
+            // Our Harmony patches are applied at plugin load, not at ruleset
+            // activation, so they also fire in other players' modes. Stay silent
+            // unless our own ruleset is the one running.
+            if (!DoriathLevelUpRule.IsActivated) return;
+
             int critLevel = piece.GetStatMax(Stats.Type.CritChance);
             // Displayed level = critLevel as-is, range 1 to 10, consistent with
             // Panel 2 (DoriathPerksPanel.cs).

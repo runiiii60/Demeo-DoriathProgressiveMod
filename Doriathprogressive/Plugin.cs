@@ -202,6 +202,6 @@ namespace DoriathMod
     {
         public const string GUID    = "com.monnom.demeomods.progressive";
         public const string NAME    = "DoriathMod";
-        public const string VERSION = "1.0.4";
+        public const string VERSION = "1.0.5";
     }
 }
