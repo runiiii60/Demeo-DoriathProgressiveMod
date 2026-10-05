@@ -6,7 +6,7 @@ Each mod lives in its own folder at the root:
 
 | Folder | Ruleset | Version |
 |---|---|---|
-| `Doriathprogressive/` | **Doriath (PROGRESSIVE)** — level up by filling the mana bar | 1.0.5 |
+| `Doriathprogressive/` | **Doriath (PROGRESSIVE)** — level up by filling the mana bar | 1.0.6 |
 | `Doriathpointprogressive/` | **Doriath (Point Progressive)** — level up by earning points from your actions | 1.0.0 |
 | `Doriath.Common/` | Sources shared by both (hardcoded patches, perk table) | — |
 
@@ -86,6 +86,17 @@ First release of the points variant.
 - **Everything is JSON-configurable** through `DoriathPointLevelUpRule`: every point value, the `LevelPercentage` pace dial, which summons count, per-boss kill values, and the optional crit and end-of-floor bonuses.
 - **A level lost resets the counter**, so the hero restarts the previous level at 0%.
 - **Coexists with Doriath (PROGRESSIVE)**: separate DLL, GUID, ruleset name and rule class names, and a soft dependency that leaves the shared hardcoded patches to the classic mod when both are installed, so none of them is applied twice.
+
+## Hotfix v1.0.6
+
+### Fixes
+- **No more game freeze when a lamp explodes in gas and kills something.** The v1.0.2 fix only shielded `MotherTracker.TrackDamageDealt`. A lamp has no team, so the kill it causes sends the same `Team.None` into `MotherTracker.TrackUnitDefeated`, which throws the same `ArgumentException` — from inside the gas-ignition coroutine, so the sequence never completes and the current player's turn never ends. The guard now covers **every** `Track*` method of `MotherTracker` instead of one named method, so any other telemetry call reading the attacker's team is covered too, including one added by a future game update. Telemetry only submits metrics, so discarding its failures has no gameplay effect.
+  This is a base-game bug, not a Doriath one, and it shows up in any ruleset. The fix ships inside `DoriathMod.dll`, so it protects every mode played with the DLL loaded, Doriath or not.
+
+### Balance changes
+- None. This release contains no gameplay or `Doriath Progressive.json` change.
+
+- Plugin version bumped to 1.0.6.
 
 ## Hotfix v1.0.5
 
